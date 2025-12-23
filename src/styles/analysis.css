@@ -1,0 +1,37 @@
+/* Move Analysis Styles */
+.analysis-feedback {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.3s ease;
+}
+
+.analysis-feedback .badge {
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+.analysis-feedback.best .badge { background-color: #26c281; }      /* Green */
+.analysis-feedback.excellent .badge { background-color: #26c281; } /* Green */
+.analysis-feedback.good .badge { background-color: #81cfe0; }      /* Light Blue/Green */
+.analysis-feedback.inaccuracy .badge { background-color: #fce38a; color: #333; } /* Yellow */
+.analysis-feedback.mistake .badge { background-color: #f39c12; }   /* Orange */
+.analysis-feedback.blunder .badge { background-color: #e74c3c; }   /* Red */
+
+.analysis-feedback .details {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
