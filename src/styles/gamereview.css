@@ -1,0 +1,130 @@
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: #262522;
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    color: white;
+}
+
+.modal-content.loading {
+    text-align: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top: 4px solid #81b64c;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #888;
+    cursor: pointer;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.accuracy-badge {
+    background: #262522;
+    border: 3px solid #81b64c;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #81b64c;
+}
+
+.accuracy-badge .value {
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+.accuracy-badge .label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+}
+
+.stats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    border-left: 4px solid transparent;
+}
+
+.stat-row .icon {
+    width: 30px;
+    font-weight: bold;
+}
+
+.stat-row .name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.stat-row .count {
+    font-weight: 800;
+}
+
+.stat-row.brilliant { border-color: #1baca6; color: #1baca6; }
+.stat-row.best { border-color: #96bc4b; color: #96bc4b; }
+.stat-row.good { border-color: #baca44; color: #baca44; }
+.stat-row.mistake { border-color: #e6912c; color: #e6912c; }
+.stat-row.blunder { border-color: #cc3333; color: #ea5050; }
+
+.review-chart {
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.chart-bar {
+    height: 100%;
+    background: #81b64c;
+}

@@ -1,0 +1,241 @@
+/* Learning Module Styles */
+.learning-module {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.header-nav {
+  margin-bottom: 32px;
+}
+
+.learning-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.learning-header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0 0 12px 0;
+}
+
+.learning-header p {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.selection-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 36px 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.selection-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 40px rgba(129, 182, 76, 0.15);
+}
+
+.card-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.selection-card h3 {
+  font-size: 1.5rem;
+  color: #fff;
+  margin: 0 0 12px 0;
+}
+
+.selection-card p {
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+/* Puzzle & Lesson Modes */
+.puzzle-mode, .lesson-mode {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.puzzle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.puzzle-info h3 {
+  font-size: 1.5rem;
+  color: #fff;
+  margin: 0 0 6px 0;
+  text-align: right;
+}
+
+.difficulty {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(129, 182, 76, 0.15);
+  color: var(--accent);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.puzzle-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 40px;
+  align-items: start;
+}
+
+.puzzle-sidebar {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.puzzle-status h4 {
+  font-size: 1.25rem;
+  color: #fff;
+  margin: 0 0 16px 0;
+}
+
+.puzzle-status h4.success {
+  color: var(--success);
+}
+
+.description {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.puzzle-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 20px;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+}
+
+.stat label {
+  color: var(--text-muted);
+}
+
+.stat span {
+  color: #fff;
+  font-weight: 500;
+}
+
+.puzzle-controls {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lesson-content {
+  margin-bottom: 24px;
+}
+
+.lesson-text {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.step-progress {
+  font-size: 0.85rem;
+  color: var(--accent);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.learning-footer {
+  text-align: center;
+  max-width: 700px;
+  margin: 60px auto 0;
+  padding: 32px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.learning-footer h3 {
+  color: var(--accent);
+  margin: 0 0 12px 0;
+}
+
+.learning-footer p {
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+  .puzzle-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .puzzle-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .puzzle-info {
+    text-align: left;
+  }
+  
+  .puzzle-info h3 {
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .learning-module {
+    padding: 24px 16px;
+  }
+  
+  .learning-header h2 {
+    font-size: 2rem;
+  }
+  
+  .selection-card {
+    padding: 28px 20px;
+  }
+  
+  .puzzle-mode, .lesson-mode {
+    padding: 20px 16px;
+  }
+}

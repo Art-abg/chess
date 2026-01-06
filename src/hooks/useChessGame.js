@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
-import EngineWorker from '../workers/engine.worker?worker';
 import { getBotById } from '../game/Bots';
 
 export default function useChessGame() {
@@ -11,41 +10,16 @@ export default function useChessGame() {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [currentBotId, setCurrentBotId] = useState('martin');
   const [currentEval, setCurrentEval] = useState(0); // Centipawns
+  const [currentBestMove, setCurrentBestMove] = useState(null);
   const [hint, setHint] = useState(null);
   const [lastMoveAnalysis, setLastMoveAnalysis] = useState(null);
+  
+  // Settings
+  const [showAnalysis, setShowAnalysis] = useState(true);
 
-  const workerRef = useRef(null);
-
-  // Initialize Worker
-  useEffect(() => {
-    workerRef.current = new EngineWorker();
-    
-    workerRef.current.onmessage = (e) => {
-      const { type, move, eval: score } = e.data;
-      
-      if (type === 'MOVE_RESULT') {
-        if (move) {
-          setGame(g => {
-            const newGame = new Chess(g.fen());
-            try { newGame.move(move); } catch(e) {/* ignore */}
-            setFen(newGame.fen());
-            updateStatus(newGame);
-            
-            // Post-move analysis
-            workerRef.current.postMessage({ type: 'ANALYZE', fen: newGame.fen() });
-            return newGame;
-          });
-        }
-        setIsAiThinking(false);
-      } else if (type === 'ANALYSIS_RESULT') {
-        setCurrentEval(score);
-      } else if (type === 'MOVE_ANALYSIS') {
-        setLastMoveAnalysis(e.data);
-      }
-    };
-
-    return () => workerRef.current.terminate();
-  }, []);
+  const botWorker = useRef(null);
+  const analysisWorker = useRef(null);
+  const prevGameState = useRef({ eval: 0, bestMove: null });
 
   const updateStatus = useCallback((currentGame) => {
     let status = '';
@@ -61,29 +35,110 @@ export default function useChessGame() {
     setHistory(currentGame.history({ verbose: true }));
   }, []);
 
+  // Initialize Workers
+  useEffect(() => {
+    // Worker 1: Bot Opponent
+    botWorker.current = new Worker('/engine/worker.js', { type: 'classic' });
+    
+    botWorker.current.onmessage = (e) => {
+      const { type, move } = e.data;
+      
+      if (type === 'MOVE_RESULT') {
+        if (move) {
+          setGame(g => {
+            const newGame = new Chess(g.fen());
+            
+            // Snapshot state before AI move
+            prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
+
+            try { 
+              if (newGame.move(move)) {
+                setFen(newGame.fen());
+                updateStatus(newGame);
+                
+                // Trigger Analysis for the new position (on the separate worker)
+                analysisWorker.current.postMessage({ type: 'ANALYZE', fen: newGame.fen() });
+              }
+            } catch(e) { console.error('Invalid AI move', move); }
+            return newGame;
+          });
+        }
+        setIsAiThinking(false);
+      }
+    };
+
+    // Worker 2: Analysis Engine (Diamond Feature: Continuous Analysis)
+    analysisWorker.current = new Worker('/engine/worker.js', { type: 'classic' });
+    
+    analysisWorker.current.onmessage = (e) => {
+        const { type, eval: score, bestMove } = e.data;
+
+        if (type === 'ANALYSIS_RESULT') {
+            setCurrentEval(score);
+            if (bestMove) setCurrentBestMove(bestMove);
+    
+            // Classify the LAST move played (if settings on)
+            if (showAnalysis) {
+                 setGame(currentG => {
+                     const history = currentG.history({ verbose: true });
+                     if (history.length > 0) {
+                         const lastMove = history[history.length - 1];
+                         
+                         // We need the eval BEFORE this move to look for blunders.
+                         // stored in prevGameState.current.eval
+                         
+                         import('../game/MoveClassifier').then(({ classifyMove, getClassStyle }) => {
+                             import('../game/MoveExplainer').then(({ explainMove }) => {
+                                 const classification = classifyMove(
+                                     prevGameState.current.eval,
+                                     score, // current eval (Position B)
+                                     lastMove,
+                                     prevGameState.current.bestMove,
+                                     currentG.isCheckmate()
+                                 );
+                                 
+                                 const explanation = explainMove(classification, lastMove, currentG.isCheck());
+                                 const style = getClassStyle(classification);
+                                 
+                                 setLastMoveAnalysis({
+                                     classification,
+                                     explanation,
+                                     style,
+                                     moveSan: lastMove.san
+                                 });
+                             });
+                         });
+                     }
+                     return currentG;
+                 });
+            }
+        }
+    };
+
+    return () => {
+        botWorker.current.terminate();
+        analysisWorker.current.terminate();
+    };
+  }, [updateStatus, currentEval, currentBestMove, showAnalysis]);
+
   const makeMove = useCallback((move) => {
     try {
-      const preMoveFen = game.fen(); // Capture state BEFORE move
-      
-      // Optimistic update
+      // Snapshot state before Player move
+      prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
+
       const result = game.move(move);
       if (result) {
         setFen(game.fen());
         updateStatus(game);
         setHint(null);
         
-        // Trigger Analysis for the move just made
-        workerRef.current.postMessage({ 
-          type: 'ANALYZE_MOVE', 
-          fen: preMoveFen, // Send OLD fen
-          move: move 
-        });
-        setLastMoveAnalysis(null); // Clear previous
-
-        // Trigger Analysis for the new position (eval bar)
-        setTimeout(() => {
-           workerRef.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
-        }, 0);
+        // Trigger Analysis for the new position
+        if (analysisWorker.current) {
+            analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+        }
+        
+        // Reset analysis until new result comes
+        // setLastMoveAnalysis(null); // Optional: keep old until new arrives? Better to clear to show "analyzing..."
 
         return true;
       }
@@ -91,7 +146,7 @@ export default function useChessGame() {
       return false;
     }
     return false;
-  }, [game, updateStatus]);
+  }, [game, updateStatus, currentEval, currentBestMove]);
 
   const makeAiMove = useCallback(() => {
     if (game.isGameOver()) return;
@@ -99,14 +154,19 @@ export default function useChessGame() {
     
     const bot = getBotById(currentBotId);
     
-    // Simulate "thinking time" based on depth/elo (optional polish)
-    // The worker handles the heavy lift, but we want it to feel valid.
-    workerRef.current.postMessage({
-      type: 'CALCULATE_MOVE',
-      fen: game.fen(),
-      depth: bot.depth,
-      id: Date.now()
-    });
+    if (botWorker.current) {
+        // Configure Bot Strength
+        botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name Skill Level value ${bot.skillLevel || 20}` });
+        botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name UCI_LimitStrength value ${bot.skillLevel < 20 ? 'true' : 'false'}` });
+        botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name UCI_Elo value ${bot.elo || 3000}` });
+    
+        botWorker.current.postMessage({
+          type: 'CALCULATE_MOVE',
+          fen: game.fen(),
+          depth: bot.depth,
+          id: Date.now()
+        });
+    }
 
   }, [game, currentBotId]);
 
@@ -117,28 +177,77 @@ export default function useChessGame() {
     setHistory([]);
     setStatus('New Game');
     setCurrentEval(0);
+    setCurrentBestMove(null);
+    prevGameState.current = { eval: 0, bestMove: null };
     setHint(null);
+    setLastMoveAnalysis(null);
   };
 
   const undo = () => {
-    game.undo(); // Undo AI
-    game.undo(); // Undo Player
+    // If empty history, nothing to undo
+    if (game.history().length === 0) return;
+
+    // If AI is thinking, just cancel? Or wait? 
+    // Ideally we shouldn't allow undo while AI triggers, but if we do, we need to stop worker.
+    
+    // Logic:
+    // If it's Player's turn (White), it means Black (AI) just moved. We need to undo 2 moves (Black + White) to get back to Player's turn.
+    // If it's Black's turn (game.turn() === 'b'), it means Player just moved and AI hasn't moved yet. Undo 1 move.
+    
+    const turn = game.turn();
+    
+    // Undo 1 move (Player's move or AI's move)
+    game.undo();
+    
+    // If we are now on Black's turn (meaning we undid AI's move and now it's Black's turn again?), 
+    // wait...
+    // Standard flow:
+    // Start (White) -> Player Move -> Black Turn -> AI Move -> White Turn.
+    
+    // If we are at White Turn:
+    // Undo 1 (removes AI move) -> Black Turn.
+    // Undo 2 (removes Player move) -> White Turn.
+    
+    // So if current turn is White, we likely want to go back to White.
+    if (turn === 'w') {
+        game.undo(); // Undo the second one (Player's move)
+    }
+    
     setFen(game.fen());
     updateStatus(game);
-    // Re-analyze
-    workerRef.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+    setHistory(game.history({ verbose: true }));
+    
+    // Reset Analysis/Hints
+    setHint(null);
+    setLastMoveAnalysis(null);
+    setCurrentBestMove(null);
+    
+    // Stop any thinking
+    setIsAiThinking(false);
+    
+    // Re-analyze new position
+    if (analysisWorker.current) {
+        analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+    }
   };
 
   const requestHint = () => {
-    // Ask worker for best move at high depth
-    // Ideally we'd have a separate message type, but simplified:
-    // We can just calculate move but NOT execute it.
-    // For now, let's just use a simple heuristic or "cheat" by peeking valid moves
-    // Real implementation: We'd ask worker. Current MVP: pick a random good move or center control
-    const moves = game.moves({ verbose: true });
-    // Simple verification check to capture
-    const capture = moves.find(m => m.flags.includes('c'));
-    setHint(capture ? capture.to : moves[0].to);
+    // If we have a best move from analysis, use it!
+    if (currentBestMove) {
+        // Convert 'e2e4' to 'e4' (destination)
+        // Actually formatted as 'e2e4' usually.
+        // bestMove is usually long algebraic.
+        // hint expects 'e4' or 'to' square?
+        // view_file earlier said: setHint(capture ? capture.to : moves[0].to);
+        
+        // currentBestMove is algebraic source+dest (e.g. e2e4).
+        const toSquare = currentBestMove.substring(2, 4);
+        setHint(toSquare);
+    } else {
+        const moves = game.moves({ verbose: true });
+        const capture = moves.find(m => m.flags.includes('c'));
+        setHint(capture ? capture.to : moves[0].to);
+    }
   };
 
   return {
@@ -155,8 +264,9 @@ export default function useChessGame() {
     setCurrentBotId,
     currentEval,
     requestHint,
-    requestHint,
     hint,
-    lastMoveAnalysis
+    lastMoveAnalysis,
+    setShowAnalysis, // Expose toggle
+    showAnalysis
   };
 }

@@ -1,12 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ChessBoard from './components/ChessBoard';
 import EvaluationBar from './components/EvaluationBar';
+import LearningModule from './components/LearningModule';
+import Landing from './components/Landing';
 import useChessGame from './hooks/useChessGame';
 import { BOTS, getBotById } from './game/Bots';
 import './styles/board.css';
 import './styles/analysis.css';
+import './styles/nav.css';
+import './styles/responsive.css';
+
+import GameReviewModal from './components/GameReviewModal';
 
 function App() {
+  const [view, setView] = useState('home'); // 'home', 'play', or 'learn'
+  const [showSettings, setShowSettings] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+
   const { 
     game, 
     status, 
@@ -21,23 +31,41 @@ function App() {
     currentEval,
     requestHint,
     hint,
-    lastMoveAnalysis
+    lastMoveAnalysis,
+    setShowAnalysis,
+    showAnalysis
   } = useChessGame();
+
 
   const currentBot = getBotById(currentBotId);
 
   // Trigger AI if it's Black's turn
   useEffect(() => {
-    if (game.turn() === 'b' && !game.isGameOver()) {
+    if (view === 'play' && game.turn() === 'b' && !game.isGameOver()) {
       makeAiMove();
     }
-  }, [game.fen(), makeAiMove, game]);
+  }, [game.fen(), makeAiMove, game, view]);
 
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
   return (
     <div className="app-container">
-      <div className="main-content">
+      {/* Navigation Header */}
+      <nav className="main-nav">
+        <div className="nav-logo" onClick={() => setView('home')} style={{cursor: 'pointer'}}>Chess Pro</div>
+        <div className="nav-links">
+          <button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>Home</button>
+          <button className={view === 'play' ? 'active' : ''} onClick={() => setView('play')}>Play</button>
+          <button className={view === 'learn' ? 'active' : ''} onClick={() => setView('learn')}>Learn</button>
+        </div>
+      </nav>
+
+      {view === 'home' ? (
+        <Landing onStartPlay={() => setView('play')} onStartLearn={() => setView('learn')} />
+      ) : view === 'learn' ? (
+        <LearningModule onBack={() => setView('play')} />
+      ) : (
+        <div className="main-content">
         
         {/* Left Side: Evaluation Bar */}
         <div className="eval-section">
@@ -65,6 +93,8 @@ function App() {
             onMove={makeMove} 
             disabled={game.turn() === 'b' || isAiThinking || game.isGameOver()}
             lastMove={lastMove}
+            hint={hint}
+            lastMoveAnalysis={lastMoveAnalysis}
           />
           
           {/* Player Info */}
@@ -80,18 +110,48 @@ function App() {
         <div className="sidebar">
           <div className="sidebar-header">
             <h2>Chess Pro</h2>
+            <button className="settings-btn" onClick={() => setShowSettings(!showSettings)} title="Settings">
+              ⚙️
+            </button>
           </div>
+          
+          {showSettings && (
+             <div className="settings-panel">
+                 <div className="setting-row">
+                     <label>Show Evaluation Bar</label>
+                     <input type="checkbox" checked={true} readOnly />
+                 </div>
+                 <div className="setting-row">
+                     <label>Move Analysis & Coach</label>
+                     <input type="checkbox" checked={showAnalysis} onChange={(e) => setShowAnalysis(e.target.checked)} />
+                 </div>
+             </div>
+          )}
           
           <div className="game-status">
             {status}
             {hint && <div className="hint-text">Hint: Try moving to {hint}</div>}
             
+            {/* Game Over Action */}
+            {game.isGameOver() && (
+                <button 
+                    className="primary" 
+                    onClick={() => setShowReview(true)}
+                    style={{width: '100%', marginTop: '10px'}}
+                >
+                    💎 Game Review
+                </button>
+            )}
+
             {/* Move Analysis Feedback */}
-            {lastMoveAnalysis && (
-              <div className={`analysis-feedback ${lastMoveAnalysis.classification.toLowerCase()}`}>
-                <div className="badge">{lastMoveAnalysis.classification}</div>
-                <div className="details">
-                  {lastMoveAnalysis.diff === 0 ? 'Best Move!' : `Lost ${lastMoveAnalysis.diff.toFixed(1)} cp`}
+            {showAnalysis && lastMoveAnalysis && (
+              <div className={`analysis-feedback ${lastMoveAnalysis.classification}`}>
+                <div className="feedback-header">
+                    <span className="icon">{lastMoveAnalysis.style.icon}</span>
+                    <span className="label">{lastMoveAnalysis.style.label}</span>
+                </div>
+                <div className="feedback-text">
+                   {lastMoveAnalysis.explanation}
                 </div>
               </div>
             )}
@@ -119,7 +179,7 @@ function App() {
           <div className="controls">
             
             <div className="bot-selector">
-               <label>Opponent:</label>
+               <label>Opponent (Skill):</label>
                <div className="bot-list">
                  {BOTS.map(bot => (
                    <button 
@@ -127,8 +187,9 @@ function App() {
                      className={`bot-chip ${bot.id === currentBotId ? 'active' : ''}`}
                      onClick={() => setCurrentBotId(bot.id)}
                      disabled={history.length > 0} // Lock during game
+                     title={`Elo: ${bot.elo}`}
                    >
-                     {bot.name} ({bot.elo})
+                     {bot.name}
                    </button>
                  ))}
                </div>
@@ -151,13 +212,22 @@ function App() {
               >
                 💡 Hint
               </button>
-              <button onClick={resetGame} className="primary full-width">
+              <button onClick={() => { resetGame(); setShowReview(false); }} className="primary full-width">
                 New Game
               </button>
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
+      
+      {showReview && (
+          <GameReviewModal 
+              game={game} 
+              onClose={() => setShowReview(false)} 
+              playerColor="w"
+          />
+      )}
     </div>
   );
 }

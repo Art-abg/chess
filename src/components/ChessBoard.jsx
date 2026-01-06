@@ -4,7 +4,8 @@ import Piece from './Piece';
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-export default function ChessBoard({ game, onMove, disabled, lastMove }) {
+export default function ChessBoard(props) {
+  const { game, onMove, disabled, lastMove, hint, lastMoveAnalysis } = props;
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
 
@@ -57,13 +58,20 @@ export default function ChessBoard({ game, onMove, disabled, lastMove }) {
             const isLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
             const isPossibleMove = possibleMoves.find(m => m.to === square);
             const isCapture = isPossibleMove && piece;
+            const isHint = props.hint === square;
+
+            // Check for analysis icon on this square (only if it's the destination of the last move)
+            const analysisIcon = (lastMoveAnalysis && lastMoveAnalysis.moveSan === props.lastMove?.san && props.lastMove?.to === square) 
+                                ? lastMoveAnalysis.style 
+                                : null;
 
             return (
               <div
                 key={square}
                 className={`square ${isDark(fileIndex, rankIndex) ? 'dark' : 'light'} 
                   ${isSelected ? 'selected' : ''} 
-                  ${isLastMove ? 'highlight' : ''}`}
+                  ${isLastMove ? 'highlight' : ''}
+                  ${isHint ? 'hint-highlight' : ''}`}
                 onClick={() => handleSquareClick(square)}
               >
                 {/* Rank/File Labels (Chess.com style) */}
@@ -78,9 +86,16 @@ export default function ChessBoard({ game, onMove, disabled, lastMove }) {
                   </span>
                 )}
 
-                {/* Move Hint */}
+                {/* Move Hint (Dots/Captures) */}
                 {isPossibleMove && !isCapture && <div className="hint-dot" />}
                 {isCapture && <div className="hint-capture" />}
+
+                {/* Analysis Icon Overlay */}
+                {analysisIcon && (
+                    <div className="analysis-icon-overlay" style={{ backgroundColor: analysisIcon.color }}>
+                        {analysisIcon.icon}
+                    </div>
+                )}
 
                 {/* Piece */}
                 <div className="piece-container">

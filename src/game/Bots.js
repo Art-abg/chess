@@ -5,6 +5,7 @@ export const BOTS = [
     elo: 250,
     avatar: 'martin', 
     depth: 1,
+    skillLevel: 0,
     description: "I'm just learning! Be nice.",
     color: '#95afc0'
   },
@@ -13,7 +14,8 @@ export const BOTS = [
     name: 'Nelson',
     elo: 1000,
     avatar: 'nelson',
-    depth: 2,
+    depth: 4,
+    skillLevel: 5,
     description: "I love bringing my Queen out early!",
     color: '#ffbe76'
   },
@@ -22,8 +24,9 @@ export const BOTS = [
     name: 'Antigravity',
     elo: 1600,
     avatar: 'antigravity',
-    depth: 3,
-    description: "I calculate 3 moves ahead. Challenge me!",
+    depth: 8,
+    skillLevel: 10,
+    description: "I calculate 8 moves ahead. Challenge me!",
     color: '#6ab04c'
   },
   {
@@ -31,9 +34,20 @@ export const BOTS = [
     name: 'Stockfish Lite',
     elo: 2000,
     avatar: 'stockfish',
-    depth: 4,
+    depth: 12,
+    skillLevel: 15,
     description: "I don't make many mistakes. Good luck.",
     color: '#eb4d4b'
+  },
+  {
+      id: 'stockfish_grandmaster',
+      name: 'Stockfish 16',
+      elo: 3200,
+      avatar: 'stockfish_gm',
+      depth: 20,
+      skillLevel: 20,
+      description: "You will not win.",
+      color: '#000000'
   }
 ];
 

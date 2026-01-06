@@ -1,0 +1,82 @@
+/* Mobile-First Responsive Styles */
+
+@media (max-width: 900px) {
+  .main-content {
+    flex-direction: column !important;
+    align-items: center;
+    padding: 1rem !important;
+    gap: 2rem !important;
+  }
+
+  .eval-section {
+    width: 100% !important;
+    height: 30px !important;
+    margin-bottom: 1rem;
+  }
+
+  .evaluation-bar {
+    width: 100% !important;
+    height: 100% !important;
+    flex-direction: row !important;
+  }
+
+  .board-section {
+    width: 100% !important;
+    max-width: 500px;
+  }
+
+  .chess-board {
+    width: 100% !important;
+    aspect-ratio: 1 / 1;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-container {
+    padding: 0 !important;
+  }
+
+  .hero-title {
+    font-size: 2.5rem !important;
+  }
+
+  .square {
+    width: 12.5% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+  }
+
+  .label {
+    font-size: 8px !important;
+  }
+
+  .piece {
+    width: 90% !important;
+    height: 90% !important;
+  }
+
+  .action-buttons {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Learning View Fixes */
+@media (max-width: 1000px) {
+  .puzzle-layout {
+    grid-template-columns: 1fr !important;
+    padding: 1rem;
+  }
+
+  .puzzle-sidebar {
+    order: 2;
+  }
+
+  .puzzle-board-container {
+    order: 1;
+  }
+}
