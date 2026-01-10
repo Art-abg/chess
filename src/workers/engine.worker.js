@@ -88,6 +88,7 @@ function handleEngineMessage(line) {
     const scoreMatch = line.match(/score cp (-?\d+)/);
     const mateMatch = line.match(/score mate (-?\d+)/);
     const depthMatch = line.match(/depth (\d+)/);
+    const pvMatch = line.match(/ pv (\w+)/);
     
     if (scoreMatch) {
       lastEval = parseInt(scoreMatch[1]);
@@ -97,12 +98,18 @@ function handleEngineMessage(line) {
 
     if (pendingAnalysis && depthMatch) {
         // Send intermediate updates
-        self.postMessage({
+        const msg = {
             type: 'ANALYSIS_RESULT',
             eval: normalizeScore(lastEval),
             depth: parseInt(depthMatch[1]),
              // We don't have bestMove yet, but we have eval
-        });
+        };
+
+        if (pvMatch) {
+            msg.bestMove = pvMatch[1];
+        }
+
+        self.postMessage(msg);
     }
   }
 }

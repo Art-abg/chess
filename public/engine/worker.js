@@ -54,6 +54,7 @@ function handleEngineMessage(line) {
     const scoreMatch = line.match(/score cp (-?\d+)/);
     const mateMatch = line.match(/score mate (-?\d+)/);
     const depthMatch = line.match(/depth (\d+)/);
+    const pvMatch = line.match(/ pv (\w+)/); // Extract first move of Principal Variation
     
     if (scoreMatch) {
       lastEval = parseInt(scoreMatch[1]);
@@ -62,11 +63,17 @@ function handleEngineMessage(line) {
     }
 
     if (pendingAnalysis && depthMatch) {
-        self.postMessage({
+        const msg = {
             type: 'ANALYSIS_RESULT',
             eval: normalizeScore(lastEval),
             depth: parseInt(depthMatch[1])
-        });
+        };
+        
+        if (pvMatch) {
+            msg.bestMove = pvMatch[1];
+        }
+        
+        self.postMessage(msg);
     }
   }
 }
