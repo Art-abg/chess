@@ -165,7 +165,7 @@ export default function useChessGame() {
     if (botWorker.current) {
         // Configure Bot Strength
         botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name Skill Level value ${bot.skillLevel || 20}` });
-        botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name UCI_LimitStrength value ${bot.skillLevel < 20 ? 'true' : 'false'}` });
+        botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name UCI_LimitStrength value ${bot.skillLevel < 15 ? 'true' : 'false'}` });
         botWorker.current.postMessage({ type: 'UCI_CMD', cmd: `setoption name UCI_Elo value ${bot.elo || 3000}` });
     
         botWorker.current.postMessage({

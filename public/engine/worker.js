@@ -104,6 +104,8 @@ self.onmessage = (e) => {
     sendCommand('stop');
     sendCommand(`position fen ${fen} moves ${move}`);
     sendCommand(`go depth 10`);
+  } else if (type === 'UCI_CMD') {
+    sendCommand(e.data.cmd);
   }
 };
 
