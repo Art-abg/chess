@@ -1,12 +1,17 @@
 import React from 'react';
-import Landing from '../components/Landing';
+import BotDashboard from '../components/home/BotDashboard';
+import { useGame } from '../context/GameContext';
 
-const HomePage = ({ onStartPlay, onStartLearn }) => {
+const HomePage = ({ onStartPlay }) => {
+  const { setCurrentBotId } = useGame();
+
+  const handleBotSelect = (botId) => {
+    setCurrentBotId(botId);
+    onStartPlay();
+  };
+
   return (
-    <Landing 
-      onStartPlay={onStartPlay} 
-      onStartLearn={onStartLearn} 
-    />
+    <BotDashboard onSelectBot={handleBotSelect} />
   );
 };
 

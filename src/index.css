@@ -1,5 +1,50 @@
-/* Clean slate */
+:root {
+  /* Chess.com Diamond Theme */
+  
+  /* Board Colors */
+  --board-light: #ebecd0;
+  --board-dark: #779556;
+  --highlight: rgba(255, 255, 0, 0.4);
+  --hint: rgba(0, 0, 0, 0.12);
+  --hint-capture: rgba(0, 0, 0, 0.12);
+  
+  /* App Backgrounds */
+  --bg-color: #302e2b; /* Darker, slightly warmer */
+  --bg-secondary: #262421;
+  --sidebar-bg: #262421;
+  --card-bg: #454441; /* Lighter for cards */
+  --input-bg: #3c3b39;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #c3c3c3;
+  --text-muted: #989795;
+  
+  /* Accents */
+  --accent: #81b64c; /* Classic Green */
+  --accent-hover: #a3d160;
+  --primary-color: #81b64c;
+  
+  /* Status */
+  --danger: #fa5c5c;
+  --success: #81b64c;
+  --warning: #f7c325;
+}
+
 body {
   margin: 0;
   padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
 }
