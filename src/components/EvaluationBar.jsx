@@ -1,30 +1,72 @@
 import React from 'react';
 
-const EvaluationBar = ({ score }) => {
-  // Score is in centipawns. +100 = +1 pawn advantage for White.
-  // We want to map this to a percentage 0% (Black win) to 100% (White win).
-  // 50% is equal.
-  // Sigmoid-like clamp: 
-  // Let's say +/- 1000 (10 pawns/Queen) is max visual advantage.
+export default function EvaluationBar({ evaluation }) {
+  // Evaluation is in centipawns (positive = White winning)
+  // Clamp between -500 and +500 for the visual bar (roughly 5 pawns advantage is "winning")
   
-  const MAX_VAL = 1000;
-  const clamped = Math.max(-MAX_VAL, Math.min(MAX_VAL, score));
+  // Normalize to 0-100% for the black bar height (or white bar).
+  // If eval is +1000 (White winning), White bar should be full.
+  // Standard design: Bar is vertical. White at bottom? 
+  // Normally White at bottom. If White is +5 (winning), White bar takes up more space.
   
-  // Map -1000..1000 to 0..100
-  const percentage = 50 + (clamped / MAX_VAL) * 50;
+  // Let's assume evaluation is relative to WHITE.
+  // range: -1000 to 1000 visually.
+  
+  const MAX_CP = 1000;
+  const clampedEval = Math.max(-MAX_CP, Math.min(MAX_CP, evaluation));
+  
+  // Percentage of WHITE bar:
+  // 0 evaluation -> 50%
+  // +1000 -> 100%
+  // -1000 -> 0%
+  
+  const whiteHeightPercent = 50 + (clampedEval / MAX_CP) * 50;
+  
+  // If mate (large numbers), force full or empty
+  let height = whiteHeightPercent;
+  if (evaluation > 9000) height = 100;
+  if (evaluation < -9000) height = 0;
+
+  const scoreText = evaluation > 9000 ? 'M' : evaluation < -9000 ? '-M' : (evaluation / 100).toFixed(1);
 
   return (
-    <div className="eval-bar-container">
-       <div 
-         className="eval-fill" 
-         style={{ height: `${percentage}%` }}
-       >
-         <span className={`eval-score ${percentage > 50 ? 'white-score' : 'black-score'}`}>
-           {score > 0 ? `+${(score/100).toFixed(1)}` : (score/100).toFixed(1)}
-         </span>
-       </div>
+    <div className="evaluation-bar-container" style={{
+        width: '20px',
+        height: '600px', // Match board height roughly
+        backgroundColor: '#262421',
+        position: 'relative',
+        marginRight: '10px',
+        borderRadius: '4px',
+        overflow: 'hidden'
+    }}>
+      {/* Black background is default */}
+      
+      {/* White Bar */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: `${height}%`,
+        backgroundColor: '#ffffff',
+        transition: 'height 0.5s ease-out'
+      }}></div>
+      
+      {/* Score Label */}
+      <div style={{
+        position: 'absolute',
+        top: height > 50 ? 'auto' : '5px',
+        bottom: height > 50 ? '5px' : 'auto',
+        left: 0, 
+        right: 0,
+        textAlign: 'center',
+        color: height > 50 ? '#000' : '#fff',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        pointerEvents: 'none'
+      }}>
+        {Math.abs(scoreText)}
+      </div>
     </div>
   );
-};
-
-export default EvaluationBar;
+}

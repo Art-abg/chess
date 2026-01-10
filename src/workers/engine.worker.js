@@ -139,13 +139,13 @@ self.onmessage = (e) => {
     pendingAnalysis = { fen };
     sendCommand('stop');
     sendCommand(`position fen ${fen}`);
-    sendCommand(`go depth ${depth || 12}`);
+    sendCommand(`go depth 20`); // Deeper analysis for the UI
   } else if (type === 'UCI_CMD') {
     sendCommand(e.data.cmd);
-  } else if (type === 'ANALYZE_MOVE') {
+  } else if (type === 'STOP') {
     sendCommand('stop');
-    sendCommand(`position fen ${fen} moves ${move}`);
-    sendCommand(`go depth 10`);
+    pendingRequest = null;
+    pendingAnalysis = null;
   }
 };
 

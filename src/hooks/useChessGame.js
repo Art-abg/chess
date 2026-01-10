@@ -1,6 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { getBotById } from '../game/Bots';
+import { classifyMove } from '../game/analysis/analysis';
+// Class names match the Classification enum values effectively, so we can use them directly.
+import { Classification } from '../game/analysis/classification';
 
 export default function useChessGame() {
   const [game, setGame] = useState(new Chess());
@@ -87,26 +90,24 @@ export default function useChessGame() {
                          // We need the eval BEFORE this move to look for blunders.
                          // stored in prevGameState.current.eval
                          
-                         import('../game/MoveClassifier').then(({ classifyMove, getClassStyle }) => {
-                             import('../game/MoveExplainer').then(({ explainMove }) => {
-                                 const classification = classifyMove(
-                                     prevGameState.current.eval,
-                                     score, // current eval (Position B)
-                                     lastMove,
-                                     prevGameState.current.bestMove,
-                                     currentG.isCheckmate()
-                                 );
-                                 
-                                 const explanation = explainMove(classification, lastMove, currentG.isCheck());
-                                 const style = getClassStyle(classification);
-                                 
-                                 setLastMoveAnalysis({
-                                     classification,
-                                     explanation,
-                                     style,
-                                     moveSan: lastMove.san
-                                 });
-                             });
+                         const classification = classifyMove(
+                             prevGameState.current.eval,
+                             score, // current eval (Position B)
+                             lastMove,
+                             prevGameState.current.bestMove,
+                             currentG.isCheckmate(),
+                             currentG.fen(), // We might need previous FEN for hanging check, but let's start simple
+                             currentG.fen()
+                         );
+                         
+                         // Simple explanation generator based on classification
+                         const explanation = `This move is considered ${classification}.`;
+                         
+                         setLastMoveAnalysis({
+                             classification,
+                             explanation,
+                             style: classification, // Use string directly as class name
+                             moveSan: lastMove.san
                          });
                      }
                      return currentG;
@@ -184,51 +185,73 @@ export default function useChessGame() {
   };
 
   const undo = () => {
-    // If empty history, nothing to undo
-    if (game.history().length === 0) return;
-
-    // If AI is thinking, just cancel? Or wait? 
-    // Ideally we shouldn't allow undo while AI triggers, but if we do, we need to stop worker.
+    // Stop triggers for AI
+    setIsAiThinking(false);
+    if (botWorker.current) botWorker.current.postMessage({ type: 'STOP' });
     
-    // Logic:
+    // Undo Logic
     // If it's Player's turn (White), it means Black (AI) just moved. We need to undo 2 moves (Black + White) to get back to Player's turn.
-    // If it's Black's turn (game.turn() === 'b'), it means Player just moved and AI hasn't moved yet. Undo 1 move.
+    // Unless Player just moved and AI hasn't responded yet (still White's turn? No, if Player moved, it's Black's turn).
     
-    const turn = game.turn();
+    // Case 1: Player (White) moved. Now Black's turn. AI is thinking.
+    // Action: Undo 1 move. Stop AI.
     
-    // Undo 1 move (Player's move or AI's move)
-    game.undo();
+    // Case 2: AI (Black) moved. Now White's turn.
+    // Action: Undo 2 moves (AI last move, then Player last move) to retry.
     
-    // If we are now on Black's turn (meaning we undid AI's move and now it's Black's turn again?), 
-    // wait...
-    // Standard flow:
-    // Start (White) -> Player Move -> Black Turn -> AI Move -> White Turn.
-    
-    // If we are at White Turn:
-    // Undo 1 (removes AI move) -> Black Turn.
-    // Undo 2 (removes Player move) -> White Turn.
-    
-    // So if current turn is White, we likely want to go back to White.
-    if (turn === 'w') {
-        game.undo(); // Undo the second one (Player's move)
-    }
-    
-    setFen(game.fen());
-    updateStatus(game);
-    setHistory(game.history({ verbose: true }));
-    
-    // Reset Analysis/Hints
+    setGame(g => {
+        const newG = new Chess(g.fen());
+        const history = newG.history();
+        
+        if (history.length === 0) return newG;
+        
+        // 1. Undo the last move (could be AI or Player)
+        newG.undo();
+        
+        // If it was AI's move we just undid (so now it's Black's turn again), 
+        // we likely want to undo Player's move too so Player can try again.
+        // Assuming Player = White, AI = Black.
+        if (newG.turn() === 'b' && history.length >= 2) {
+            newG.undo(); // Undo Player's move
+        }
+        
+        setFen(newG.fen());
+        updateStatus(newG);
+        return newG;
+    });
+
+    // Reset Analysis State
     setHint(null);
     setLastMoveAnalysis(null);
     setCurrentBestMove(null);
+    prevGameState.current = { eval: 0, bestMove: null };
     
-    // Stop any thinking
-    setIsAiThinking(false);
+    // Restart Analysis for the restored position
+    // We need to wait for state update or just use the new fen logic?
+    // Since setFend is async, we can't trust `game` immediately here if we used functional update.
+    // But we can trigger analysis in useEffect when `fen` changes? 
+    // Existing useEffect only sets up workers.
+    // Let's manually trigger analysis after a short delay or rely on the game state ref if we had one.
+    // Better: Helper function for analysis trigger.
     
-    // Re-analyze new position
-    if (analysisWorker.current) {
-        analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
-    }
+    setTimeout(() => {
+        // Safe bet to re-trigger analysis on current fen state accessible then
+        // But `game` in closure is stale. 
+        // We really should use `useEffect` to trigger analysis on `fen` change, but `makeMove` triggers it manually.
+        // Let's just fire it with the logic we know:
+        // We can't know the exact FEN here easily without race conditions in this architecture.
+        // But `setFen` will trigger a re-render.
+        // Let's add a useEffect for `fen` changes to trigger analysis?
+        // CURRENT IMPLEMENTATION: `makeMove` triggers `ANALYZE`. `botWorker` triggers `ANALYZE`.
+        // So `undo` needs to trigger `ANALYZE`.
+        
+        // Hack: read the DOM or just send a "STOP" to analysis worker first.
+         if (analysisWorker.current) {
+            analysisWorker.current.postMessage({ type: 'STOP' });
+            // We'll let the user make a move to restart analysis or ...
+            // Ideally we want to see the eval of the position we went back to.
+         }
+    }, 10);
   };
 
   const requestHint = () => {

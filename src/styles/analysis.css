@@ -1,136 +1,52 @@
-/* Move Analysis Styles */
 .analysis-feedback {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: slideIn 0.3s ease-out;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: #2b2b2b;
+    border-left: 5px solid #888;
 }
 
 .analysis-feedback .feedback-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 800;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    gap: 8px;
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 
-.analysis-feedback .icon {
-    font-family: 'Noto Color Emoji', sans-serif;
-    font-size: 1.4em;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+.analysis-feedback.best, .analysis-feedback.brilliant, .analysis-feedback.great, .analysis-feedback.excellent {
+    border-color: #27ae60;
+    background: rgba(39, 174, 96, 0.1);
 }
+.analysis-feedback.best .label, .analysis-feedback.brilliant .label { color: #2ecc71; }
 
-.analysis-feedback .feedback-text {
-    font-size: 0.95rem;
-    color: #e0e0e0;
-    line-height: 1.5;
-    font-weight: 500;
+.analysis-feedback.good {
+    border-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.1);
 }
+.analysis-feedback.good .label { color: #f1c40f; }
 
-/* Classification Colors & Styles */
-.analysis-feedback.brilliant { 
-    border-color: #1baca6; 
-    background: linear-gradient(135deg, rgba(27, 172, 166, 0.2), rgba(27, 172, 166, 0.05));
-    color: #1baca6;
+.analysis-feedback.inaccuracy {
+    border-color: #e67e22;
+    background: rgba(230, 126, 34, 0.1);
 }
-.analysis-feedback.best { 
-    border-color: #96bc4b; 
-    background: linear-gradient(135deg, rgba(150, 188, 75, 0.2), rgba(150, 188, 75, 0.05));
-    color: #96bc4b;
-}
-.analysis-feedback.excellent { 
-    border-color: #96bc4b;
-    color: #96bc4b;
-} 
-.analysis-feedback.good { 
-    border-color: #baca44;
-    color: #baca44;
-}
-.analysis-feedback.inaccuracy { 
-    border-color: #f0c15c;
-    color: #f0c15c;
-}
-.analysis-feedback.mistake { 
-    border-color: #e6912c; 
-    background: linear-gradient(135deg, rgba(230, 145, 44, 0.2), rgba(230, 145, 44, 0.05));
-    color: #e6912c;
-}
-.analysis-feedback.blunder { 
-    border-color: #cc3333; 
-    background: linear-gradient(135deg, rgba(204, 51, 51, 0.2), rgba(204, 51, 51, 0.05));
-    color: #ea5050;
-}
-.analysis-feedback.book { 
-    border-color: #a88865; 
-    color: #c4a480;
-}
+.analysis-feedback.inaccuracy .label { color: #e67e22; }
 
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.analysis-feedback.mistake {
+    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
 }
+.analysis-feedback.mistake .label { color: #e74c3c; }
 
-/* Settings Panel */
-.settings-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.2rem;
-    padding: 4px;
-    border-radius: 4px;
-    color: #888;
-    transition: all 0.2s;
+.analysis-feedback.blunder {
+    border-color: #c0392b;
+    background: rgba(192, 57, 43, 0.1);
 }
-.settings-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
+.analysis-feedback.blunder .label { color: #c0392b; }
 
-.settings-panel {
-    position: absolute;
-    top: 50px;
-    right: 10px;
-    width: 260px;
-    background: #2b2b2b;
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 16px;
-    z-index: 1000;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-    animation: slideDown 0.2s ease;
-}
-
-.setting-row {
+.eval-section {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
-    font-size: 0.95em;
-    color: #eee;
+    justify-content: center;
+    padding-right: 15px;
 }
-
-.setting-row label {
-    flex: 1;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Evaluation Bar Styles (kept for reference if needed, typically in board.css) */
