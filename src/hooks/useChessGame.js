@@ -49,7 +49,12 @@ export default function useChessGame() {
       if (type === 'MOVE_RESULT') {
         if (move) {
           setGame(g => {
-            const newGame = new Chess(g.fen());
+            const newGame = new Chess();
+            try {
+                newGame.loadPgn(g.pgn());
+            } catch (e) {
+                newGame.load(g.fen()); 
+            }
             
             // Snapshot state before AI move
             prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
@@ -60,7 +65,9 @@ export default function useChessGame() {
                 updateStatus(newGame);
                 
                 // Trigger Analysis for the new position (on the separate worker)
-                analysisWorker.current.postMessage({ type: 'ANALYZE', fen: newGame.fen() });
+                if (analysisWorker.current) {
+                    analysisWorker.current.postMessage({ type: 'ANALYZE', fen: newGame.fen() });
+                }
               }
             } catch(e) { console.error('Invalid AI move', move); }
             return newGame;
@@ -200,7 +207,13 @@ export default function useChessGame() {
     // Action: Undo 2 moves (AI last move, then Player last move) to retry.
     
     setGame(g => {
-        const newG = new Chess(g.fen());
+        const newG = new Chess();
+        try {
+            newG.loadPgn(g.pgn());
+        } catch(e) {
+           newG.load(g.fen()); // Fallback
+        }
+
         const history = newG.history();
         
         if (history.length === 0) return newG;
