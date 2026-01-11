@@ -4,6 +4,7 @@ import { getBotById } from '../game/Bots';
 import { classifyMove } from '../game/analysis/analysis';
 // Class names match the Classification enum values effectively, so we can use them directly.
 import { Classification } from '../game/analysis/classification';
+import useSound from './useSound';
 
 export default function useChessGame() {
   const [game, setGame] = useState(new Chess());
@@ -17,6 +18,9 @@ export default function useChessGame() {
   const [hint, setHint] = useState(null);
   const [lastMoveAnalysis, setLastMoveAnalysis] = useState(null);
   
+  // Sounds
+  const { playMove, playCapture, playCheck, playGameEnd } = useSound();
+  
   // Settings
   const [showAnalysis, setShowAnalysis] = useState(true);
 
@@ -24,19 +28,30 @@ export default function useChessGame() {
   const analysisWorker = useRef(null);
   const prevGameState = useRef({ eval: 0, bestMove: null });
 
-  const updateStatus = useCallback((currentGame) => {
+  const updateStatus = useCallback((currentGame, latestMoveResult) => {
     let status = '';
+    const isCheck = currentGame.isCheck();
+    
     if (currentGame.isCheckmate()) {
       status = `Checkmate! ${currentGame.turn() === 'w' ? 'Black' : 'White'} wins!`;
+      playGameEnd();
     } else if (currentGame.isDraw()) {
       status = 'Draw!';
+      playGameEnd();
     } else {
       status = `Turn: ${currentGame.turn() === 'w' ? 'White' : 'Black'}`;
-      if (currentGame.isCheck()) status += ' (Check!)';
+      if (isCheck) status += ' (Check!)';
+      
+      // Play move sounds if not game over
+      if (latestMoveResult) {
+          if (isCheck) playCheck();
+          else if (latestMoveResult.flags.includes('c')) playCapture();
+          else playMove();
+      }
     }
     setStatus(status);
     setHistory(currentGame.history({ verbose: true }));
-  }, []);
+  }, [playMove, playCapture, playCheck, playGameEnd]);
 
   // Initialize Workers
   useEffect(() => {
@@ -60,9 +75,10 @@ export default function useChessGame() {
             prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
 
             try { 
-              if (newGame.move(move)) {
+              const moveResult = newGame.move(move);
+              if (moveResult) {
                 setFen(newGame.fen());
-                updateStatus(newGame);
+                updateStatus(newGame, moveResult); // Pass move result for sound
                 
                 // Trigger Analysis for the new position (on the separate worker)
                 if (analysisWorker.current) {
@@ -134,10 +150,10 @@ export default function useChessGame() {
       // Snapshot state before Player move
       prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
 
-      const result = game.move(move);
-      if (result) {
+      const moveResult = game.move(move);
+      if (moveResult) {
         setFen(game.fen());
-        updateStatus(game);
+        updateStatus(game, moveResult); // Pass move result for sound
         setHint(null);
         
         // Trigger Analysis for the new position

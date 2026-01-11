@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react';
 import ChessBoard from '../components/ChessBoard';
 import EvaluationBar from '../components/EvaluationBar';
 import GameReviewModal from '../components/GameReviewModal';
-import { useGame } from '../context/GameContext'; // Hook into context
+import SidebarTabs from '../components/common/SidebarTabs';
+import { useGame } from '../context/GameContext'; 
 import { BOTS, getBotById } from '../game/Bots';
 import '../styles/board.css';
 import '../styles/analysis.css';
 import '../styles/responsive.css';
 
 const PlayPage = () => {
-  const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState('game'); // game, moves, chat
   const [showReview, setShowReview] = useState(false);
 
   const { 
@@ -34,8 +35,6 @@ const PlayPage = () => {
   const currentBot = getBotById(currentBotId);
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
-  // Trigger AI if it's Black's turn and we are in the Play view
-  // Since this component unmounts when not in Play view, this effect is safe
   useEffect(() => {
     if (game.turn() === 'b' && !game.isGameOver()) {
       makeAiMove();
@@ -58,7 +57,6 @@ const PlayPage = () => {
         {/* Opponent (Bot) Info */}
         <div className="player-info top">
           <div className="avatar ai" style={{ backgroundColor: currentBot.color }}>
-             {/* Simple Initials or Icon */}
              {currentBot.name[0]}
           </div>
           <div className="username">
@@ -90,116 +88,86 @@ const PlayPage = () => {
       </div>
 
       <div className="sidebar">
-        <div className="sidebar-header">
-          <h2>Chess Pro</h2>
-          <button className="settings-btn" onClick={() => setShowSettings(!showSettings)} title="Settings">
-            ⚙️
-          </button>
-        </div>
+        <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
         
-        {showSettings && (
-           <div className="settings-panel">
-               <div className="setting-row">
-                   <label>Show Evaluation Bar</label>
-                   <input type="checkbox" checked={true} readOnly />
-               </div>
-               <div className="setting-row">
-                   <label>Move Analysis & Coach</label>
-                   <input 
-                    type="checkbox" 
-                    checked={showAnalysis} 
-                    onChange={(e) => setShowAnalysis(e.target.checked)} 
-                   />
-               </div>
-           </div>
-        )}
-        
-        <div className="game-status">
-          {status}
-          {hint && <div className="hint-text">Hint: Try moving to {hint}</div>}
-          
-          {/* Game Over Action */}
-          {game.isGameOver() && (
-              <button 
-                  className="primary" 
-                  onClick={() => setShowReview(true)}
-                  style={{width: '100%', marginTop: '10px'}}
-              >
-                  💎 Game Review
-              </button>
+        <div className="sidebar-content">
+          {activeTab === 'game' && (
+             <div className="controls">
+                <div className="game-status">
+                  {status}
+                  {hint && <div className="hint-text">Hint: Try moving to {hint}</div>}
+                </div>
+
+                <div className="bot-selector">
+                   <label>Opponent (Skill):</label>
+                   <div className="bot-list">
+                     {BOTS.map(bot => (
+                       <button 
+                         key={bot.id}
+                         className={`bot-chip ${bot.id === currentBotId ? 'active' : ''}`}
+                         onClick={() => setCurrentBotId(bot.id)}
+                         disabled={history.length > 0} 
+                       >
+                         {bot.name} ({bot.elo})
+                       </button>
+                     ))}
+                   </div>
+                </div>
+
+                <div className="action-buttons grid">
+                  <button onClick={undo} disabled={history.length === 0 || isAiThinking}>
+                    ↶ Undo
+                  </button>
+                  <button onClick={requestHint} disabled={isAiThinking || game.isGameOver()}>
+                    💡 Hint
+                  </button>
+                  <button onClick={handleNewGame} className="primary full-width">
+                     New Game
+                  </button>
+                  {game.isGameOver() && (
+                    <button className="primary full-width" onClick={() => setShowReview(true)}>
+                        💎 Game Review
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--border-color)'}}>
+                    <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-secondary)'}}>
+                        <input 
+                            type="checkbox" 
+                            checked={showAnalysis} 
+                            onChange={(e) => setShowAnalysis(e.target.checked)} 
+                        />
+                        <span>Show Analysis / Coach</span>
+                    </label>
+                </div>
+             </div>
           )}
 
-          {/* Move Analysis Feedback */}
-          {showAnalysis && lastMoveAnalysis && (
-            <div className={`analysis-feedback ${lastMoveAnalysis.classification}`}>
-              <div className="feedback-header">
-                  <span className="label" style={{textTransform: 'capitalize'}}>{lastMoveAnalysis.classification}</span>
-              </div>
-              <div className="feedback-text">
-                 {lastMoveAnalysis.explanation}
-              </div>
+          {activeTab === 'moves' && (
+            <div className="moves-history">
+              {history.map((move, i) => {
+                if (i % 2 === 0) {
+                  return (
+                    <div key={i} className="move-row">
+                      <span className="move-num">{Math.floor(i/2) + 1}.</span>
+                      <span className="move white">{move.san}</span>
+                      {history[i+1] && <span className="move black">{history[i+1].san}</span>}
+                    </div>
+                  );
+                }
+                return null;
+              })}
+              <div ref={el => el?.scrollIntoView()} />
             </div>
           )}
-        </div>
-
-        <div className="moves-history">
-          <h3>Moves</h3>
-          <div className="moves-list">
-            {history.map((move, i) => {
-              if (i % 2 === 0) {
-                return (
-                  <div key={i} className="move-row">
-                    <span className="move-num">{Math.floor(i/2) + 1}.</span>
-                    <span className="move white">{move.san}</span>
-                    {history[i+1] && <span className="move black">{history[i+1].san}</span>}
-                  </div>
-                );
-              }
-              return null;
-            })}
-            <div ref={el => el?.scrollIntoView()} />
-          </div>
-        </div>
-
-        <div className="controls">
-          <div className="bot-selector">
-             <label>Opponent (Skill):</label>
-             <div className="bot-list">
-               {BOTS.map(bot => (
-                 <button 
-                   key={bot.id}
-                   className={`bot-chip ${bot.id === currentBotId ? 'active' : ''}`}
-                   onClick={() => setCurrentBotId(bot.id)}
-                   disabled={history.length > 0} // Lock during game
-                   title={`Elo: ${bot.elo}`}
-                 >
-                   {bot.name}
-                 </button>
-               ))}
-             </div>
-          </div>
-
-          <div className="action-buttons grid">
-            <button 
-              onClick={undo} 
-              className="secondary" 
-              disabled={history.length === 0 || isAiThinking}
-              title="Takeback Move"
-            >
-              ↶ Undo
-            </button>
-            <button 
-               onClick={requestHint} 
-               className="secondary"
-               disabled={isAiThinking || game.isGameOver()}
-               title="Get a Hint"
-            >
-              💡 Hint
-            </button>
-            <button onClick={handleNewGame} className="primary full-width">
-              New Game
-            </button>
-          </div>
+          
+          {activeTab === 'chat' && (
+              <div style={{padding: '20px', color: 'var(--text-secondary)', textAlign: 'center'}}>
+                  <p>Chat is disabled vs Computer.</p>
+                  <p><i>{currentBot.description}</i></p>
+              </div>
+          )}
         </div>
       </div>
 
