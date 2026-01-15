@@ -294,10 +294,17 @@ input[type="checkbox"] {
 .player-info {
   display: flex;
   align-items: center;
+  justify-content: space-between; /* Push captured pieces/status to right? */
   gap: 12px;
   padding: 8px 12px;
   background-color: transparent; /* Cleaner look */
   color: var(--text-primary);
+}
+
+.player-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .avatar {

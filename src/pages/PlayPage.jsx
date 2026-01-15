@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import confetti from 'canvas-confetti';
 import ChessBoard from '../components/ChessBoard';
 import EvaluationBar from '../components/EvaluationBar';
 import GameReviewModal from '../components/GameReviewModal';
 import SidebarTabs from '../components/common/SidebarTabs';
+import CapturedPieces from '../components/CapturedPieces';
 import { useGame } from '../context/GameContext'; 
 import { BOTS, getBotById } from '../game/Bots';
 import '../styles/board.css';
@@ -35,11 +37,38 @@ const PlayPage = () => {
   const currentBot = getBotById(currentBotId);
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
+  // Calculate captured pieces
+  const { whiteCaptures, blackCaptures } = useMemo(() => {
+    const w = [];
+    const b = [];
+    history.forEach(move => {
+      if (move.captured) {
+        if (move.color === 'w') w.push(move.captured); // White captured something (so it's a black piece)
+        else b.push(move.captured); // Black captured something (so it's a white piece)
+      }
+    });
+    return { whiteCaptures: w, blackCaptures: b };
+  }, [history]);
+
   useEffect(() => {
     if (game.turn() === 'b' && !game.isGameOver()) {
       makeAiMove();
     }
   }, [game.fen(), makeAiMove, game]);
+
+  // Confetti Effect on Win
+  useEffect(() => {
+    if (game.isCheckmate()) {
+        const winner = game.turn() === 'w' ? 'Black' : 'White';
+        if (winner === 'White') {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+    }
+  }, [game]); // Depend on game state changes
 
   const handleNewGame = () => {
     resetGame();
@@ -56,13 +85,18 @@ const PlayPage = () => {
       <div className="board-container">
         {/* Opponent (Bot) Info */}
         <div className="player-info top">
-          <div className="avatar ai" style={{ backgroundColor: currentBot.color }}>
-             {currentBot.name[0]}
+          <div className="player-details">
+            <div className="avatar ai" style={{ backgroundColor: currentBot.color }}>
+               {currentBot.name[0]}
+            </div>
+            <div className="username">
+              <span className="name">{currentBot.name}</span>
+              <span className="rating">({currentBot.elo})</span>
+            </div>
+            {/* Bot (Black) captured White pieces */}
+            <CapturedPieces captured={blackCaptures} color="w" />
           </div>
-          <div className="username">
-            <span className="name">{currentBot.name}</span>
-            <span className="rating">({currentBot.elo})</span>
-          </div>
+          
           <div className="bot-message">
              {isAiThinking ? "Thinking..." : currentBot.description}
           </div>
@@ -79,10 +113,14 @@ const PlayPage = () => {
         
         {/* Player Info */}
         <div className="player-info bottom">
-          <div className="avatar human">ME</div>
-          <div className="username">
-            <span className="name">You</span>
-            <span className="rating">(1200)</span>
+          <div className="player-details">
+            <div className="avatar human">ME</div>
+            <div className="username">
+              <span className="name">You</span>
+              <span className="rating">(1200)</span>
+            </div>
+            {/* Player (White) captured Black pieces */}
+            <CapturedPieces captured={whiteCaptures} color="b" />
           </div>
         </div>
       </div>
