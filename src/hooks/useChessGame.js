@@ -66,6 +66,18 @@ export default function useChessGame() {
   const prevGameState = useRef({ eval: 0, bestMove: null });
   const analysisCacheRef = useRef({});
 
+  // Stable refs for worker callbacks
+  const gameRef = useRef(game);
+  const showAnalysisRef = useRef(showAnalysis);
+
+  useEffect(() => {
+    gameRef.current = game;
+  }, [game]);
+
+  useEffect(() => {
+    showAnalysisRef.current = showAnalysis;
+  }, [showAnalysis]);
+
   const updateStatus = useCallback((currentGame, latestMoveResult) => {
     let status = '';
     const isCheck = currentGame.isCheck();
@@ -146,8 +158,8 @@ export default function useChessGame() {
             }
     
             // Classify the LAST move played (if settings on)
-            if (showAnalysis) {
-                 const movesHistory = game.history({ verbose: true });
+            if (showAnalysisRef.current) {
+                 const movesHistory = gameRef.current.history({ verbose: true });
                  if (movesHistory.length > 0) {
                      const moveIndex = movesHistory.length - 1;
                      const lastMove = movesHistory[moveIndex];
@@ -161,9 +173,9 @@ export default function useChessGame() {
                          score, // current eval (Position B)
                          lastMove,
                          prevGameState.current.bestMove,
-                         game.isCheckmate(),
-                         game.fen(),
-                         game.fen()
+                         gameRef.current.isCheckmate(),
+                         gameRef.current.fen(),
+                         gameRef.current.fen()
                      );
                      
                      const style = getClassificationStyle(classification);
@@ -199,13 +211,13 @@ export default function useChessGame() {
         }
     };
 
-    analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+    analysisWorker.current.postMessage({ type: 'ANALYZE', fen: gameRef.current.fen() });
 
     return () => {
-        botWorker.current.terminate();
-        analysisWorker.current.terminate();
+        if (botWorker.current) botWorker.current.terminate();
+        if (analysisWorker.current) analysisWorker.current.terminate();
     };
-  }, [updateStatus, currentEval, currentBestMove, showAnalysis]);
+  }, [updateStatus]); 
 
   // Apply Theme
   useEffect(() => {
