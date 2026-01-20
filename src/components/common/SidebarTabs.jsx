@@ -22,6 +22,12 @@ const SidebarTabs = ({ activeTab, onTabChange }) => {
       >
         Chat
       </button>
+      <button 
+        className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+        onClick={() => onTabChange('settings')}
+      >
+        Settings
+      </button>
     </div>
   );
 };

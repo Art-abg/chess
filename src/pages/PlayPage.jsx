@@ -4,6 +4,7 @@ import ChessBoard from '../components/ChessBoard';
 import EvaluationBar from '../components/EvaluationBar';
 import GameReviewModal from '../components/GameReviewModal';
 import SidebarTabs from '../components/common/SidebarTabs';
+import ThemeSelector from '../components/common/ThemeSelector';
 import CapturedPieces from '../components/CapturedPieces';
 import { useGame } from '../context/GameContext'; 
 import { BOTS, getBotById } from '../game/Bots';
@@ -33,7 +34,9 @@ const PlayPage = () => {
     setShowAnalysis,
     showAnalysis,
     viewIndex,
-    setViewIndex
+    setViewIndex,
+    boardTheme,
+    setBoardTheme
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -258,6 +261,26 @@ const PlayPage = () => {
               <div style={{padding: '20px', color: 'var(--text-secondary)', textAlign: 'center'}}>
                   <p>Chat is disabled vs Computer.</p>
                   <p><i>{currentBot.description}</i></p>
+              </div>
+          )}
+
+          {activeTab === 'settings' && (
+              <div className="settings-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <ThemeSelector currentTheme={boardTheme} onThemeChange={setBoardTheme} />
+                  
+                  <div style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input 
+                              type="checkbox" 
+                              checked={showAnalysis} 
+                              onChange={(e) => setShowAnalysis(e.target.checked)} 
+                          />
+                          <span style={{ fontWeight: '600' }}>Enable Coach Analysis</span>
+                      </label>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                          Provides real-time feedback and move classifications.
+                      </p>
+                  </div>
               </div>
           )}
         </div>

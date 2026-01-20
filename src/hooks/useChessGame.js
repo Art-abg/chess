@@ -6,6 +6,34 @@ import { classifyMove } from '../game/analysis/analysis';
 import { Classification } from '../game/analysis/classification';
 import useSound from './useSound';
 
+export const BOARD_THEMES = {
+  green: {
+    name: 'Green (Classic)',
+    light: '#ebecd0',
+    dark: '#779556'
+  },
+  blue: {
+    name: 'Blue',
+    light: '#dee3e6',
+    dark: '#8ca2ad'
+  },
+  wood: {
+    name: 'Wood',
+    light: '#f0d9b5',
+    dark: '#b58863'
+  },
+  metal: {
+    name: 'Metal',
+    light: '#d1d1d1',
+    dark: '#7a7a7a'
+  },
+  purple: {
+    name: 'Purple',
+    light: '#efefef',
+    dark: '#8877b7'
+  }
+};
+
 export default function useChessGame() {
   const [game, setGame] = useState(new Chess());
   const [fen, setFen] = useState(game.fen());
@@ -18,6 +46,7 @@ export default function useChessGame() {
   const [hint, setHint] = useState(null);
   const [lastMoveAnalysis, setLastMoveAnalysis] = useState(null);
   const [viewIndex, setViewIndex] = useState(-1); // -1 means live (end of history)
+  const [boardTheme, setBoardTheme] = useState('green');
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -145,6 +174,13 @@ export default function useChessGame() {
         analysisWorker.current.terminate();
     };
   }, [updateStatus, currentEval, currentBestMove, showAnalysis]);
+
+  // Apply Theme
+  useEffect(() => {
+    const theme = BOARD_THEMES[boardTheme] || BOARD_THEMES.green;
+    document.documentElement.style.setProperty('--board-light', theme.light);
+    document.documentElement.style.setProperty('--board-dark', theme.dark);
+  }, [boardTheme]);
 
   const makeMove = useCallback((move) => {
     try {
@@ -325,6 +361,8 @@ export default function useChessGame() {
     setShowAnalysis, // Expose toggle
     showAnalysis,
     viewIndex,
-    setViewIndex
+    setViewIndex,
+    boardTheme,
+    setBoardTheme
   };
 }
