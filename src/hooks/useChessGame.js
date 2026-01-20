@@ -218,6 +218,7 @@ export default function useChessGame() {
         setFen(game.fen());
         updateStatus(game, moveResult); // Pass move result for sound
         setHint(null);
+        setCurrentBestMove(null);
         
         // Trigger Analysis for the new position
         if (analysisWorker.current) {
@@ -228,6 +229,8 @@ export default function useChessGame() {
         // setLastMoveAnalysis(null); // Optional: keep old until new arrives? Better to clear to show "analyzing..."
 
         setViewIndex(-1); // Reset view to live on new move
+        setHint(null);
+        setCurrentBestMove(null);
         return true;
       }
     } catch (e) {
@@ -238,6 +241,8 @@ export default function useChessGame() {
 
   const makeAiMove = useCallback(() => {
     if (game.isGameOver()) return;
+    setHint(null);
+    setCurrentBestMove(null);
     setIsAiThinking(true);
     
     const bot = getBotById(currentBotId);
@@ -354,19 +359,18 @@ export default function useChessGame() {
   const requestHint = () => {
     // If we have a best move from analysis, use it!
     if (currentBestMove) {
-        // Convert 'e2e4' to 'e4' (destination)
-        // Actually formatted as 'e2e4' usually.
-        // bestMove is usually long algebraic.
-        // hint expects 'e4' or 'to' square?
-        // view_file earlier said: setHint(capture ? capture.to : moves[0].to);
-        
-        // currentBestMove is algebraic source+dest (e.g. e2e4).
-        const toSquare = currentBestMove.substring(2, 4);
-        setHint(toSquare);
+        // currentBestMove is UCI (e.g. "e2e4")
+        const from = currentBestMove.substring(0, 2);
+        const to = currentBestMove.substring(2, 4);
+        setHint({ from, to });
     } else {
+        // Fallback: use chess.js to find a decent move (e.g. a capture or just any)
         const moves = game.moves({ verbose: true });
+        if (moves.length === 0) return;
+        
         const capture = moves.find(m => m.flags.includes('c'));
-        setHint(capture ? capture.to : moves[0].to);
+        const hintMove = capture || moves[0];
+        setHint({ from: hintMove.from, to: hintMove.to });
     }
   };
 

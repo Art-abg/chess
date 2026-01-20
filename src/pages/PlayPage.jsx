@@ -179,7 +179,7 @@ const PlayPage = () => {
              <div className="controls">
                 <div className="game-status">
                   {status}
-                  {hint && <div className="hint-text">Hint: Try moving to {hint}</div>}
+                  {hint && <div className="hint-text">Hint: Try moving {hint.from} to {hint.to}</div>}
                   
                   {currentAnalysis && (
                     <div className={`analysis-feedback ${currentAnalysis.style}`}>

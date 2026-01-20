@@ -58,7 +58,7 @@ export default function ChessBoard(props) {
             const isLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
             const isPossibleMove = possibleMoves.find(m => m.to === square);
             const isCapture = isPossibleMove && piece;
-            const isHint = props.hint === square;
+            const isHint = props.hint && (props.hint.from === square || props.hint.to === square);
 
             // Check for analysis icon on this square (only if it's the destination of the last move)
             const analysisIcon = (lastMoveAnalysis && lastMoveAnalysis.moveSan === props.lastMove?.san && props.lastMove?.to === square) 
