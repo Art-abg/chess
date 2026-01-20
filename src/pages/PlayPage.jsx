@@ -37,7 +37,8 @@ const PlayPage = () => {
     setViewIndex,
     boardTheme,
     setBoardTheme,
-    analysisCache
+    analysisCache,
+    isAnalyzingHint
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -179,7 +180,8 @@ const PlayPage = () => {
              <div className="controls">
                 <div className="game-status">
                   {status}
-                  {hint && <div className="hint-text">Hint: Try moving {hint.from} to {hint.to}</div>}
+                  {isAnalyzingHint && <div className="hint-text thinking">Coach is thinking...</div>}
+                  {hint && !isAnalyzingHint && <div className="hint-text">Hint: Try moving {hint.from} to {hint.to}</div>}
                   
                   {currentAnalysis && (
                     <div className={`analysis-feedback ${currentAnalysis.style}`}>

@@ -53,6 +53,7 @@ export default function useChessGame() {
   const [viewIndex, setViewIndex] = useState(-1); // -1 means live (end of history)
   const [boardTheme, setBoardTheme] = useState('green');
   const [analysisCache, setAnalysisCache] = useState({}); // Key: moveIndex, Value: { classification, explanation, style, eval, depth }
+  const [isAnalyzingHint, setIsAnalyzingHint] = useState(false);
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -139,7 +140,10 @@ export default function useChessGame() {
         if (type === 'ANALYSIS_RESULT') {
             const depth = e.data.depth;
             setCurrentEval(score);
-            if (bestMove) setCurrentBestMove(bestMove);
+            if (bestMove) {
+                setCurrentBestMove(bestMove);
+                setIsAnalyzingHint(false);
+            }
     
             // Classify the LAST move played (if settings on)
             if (showAnalysis) {
@@ -195,6 +199,8 @@ export default function useChessGame() {
         }
     };
 
+    analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+
     return () => {
         botWorker.current.terminate();
         analysisWorker.current.terminate();
@@ -231,6 +237,7 @@ export default function useChessGame() {
         setViewIndex(-1); // Reset view to live on new move
         setHint(null);
         setCurrentBestMove(null);
+        setIsAnalyzingHint(false);
         return true;
       }
     } catch (e) {
@@ -243,6 +250,7 @@ export default function useChessGame() {
     if (game.isGameOver()) return;
     setHint(null);
     setCurrentBestMove(null);
+    setIsAnalyzingHint(false);
     setIsAiThinking(true);
     
     const bot = getBotById(currentBotId);
@@ -363,14 +371,10 @@ export default function useChessGame() {
         const from = currentBestMove.substring(0, 2);
         const to = currentBestMove.substring(2, 4);
         setHint({ from, to });
+        setIsAnalyzingHint(false);
     } else {
-        // Fallback: use chess.js to find a decent move (e.g. a capture or just any)
-        const moves = game.moves({ verbose: true });
-        if (moves.length === 0) return;
-        
-        const capture = moves.find(m => m.flags.includes('c'));
-        const hintMove = capture || moves[0];
-        setHint({ from: hintMove.from, to: hintMove.to });
+        // No quality move yet, show thinking state
+        setIsAnalyzingHint(true);
     }
   };
 
@@ -396,6 +400,7 @@ export default function useChessGame() {
     setViewIndex,
     boardTheme,
     setBoardTheme,
-    analysisCache
+    analysisCache,
+    isAnalyzingHint
   };
 }
