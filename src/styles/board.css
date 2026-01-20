@@ -246,6 +246,13 @@ input[type="checkbox"] {
   color: var(--accent-green);
 }
 
+.move.active {
+  background-color: var(--accent-green);
+  color: white !important;
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
 /* Action Buttons / Controls at bottom */
 .controls {
   padding: 16px;

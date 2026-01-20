@@ -31,11 +31,28 @@ const PlayPage = () => {
     hint,
     lastMoveAnalysis,
     setShowAnalysis,
-    showAnalysis
+    showAnalysis,
+    viewIndex,
+    setViewIndex
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
+
+  const displayGame = useMemo(() => {
+    if (viewIndex === -1 || viewIndex >= history.length - 1) return game;
+    const newGame = new Chess();
+    for (let i = 0; i <= viewIndex; i++) {
+        newGame.move(history[i].san);
+    }
+    return newGame;
+  }, [game, history, viewIndex]);
+
+  const displayLastMove = useMemo(() => {
+    if (viewIndex === -1) return lastMove;
+    if (viewIndex < 0) return null;
+    return history[viewIndex];
+  }, [history, lastMove, viewIndex]);
 
   // Calculate captured pieces
   const { whiteCaptures, blackCaptures } = useMemo(() => {
@@ -70,6 +87,26 @@ const PlayPage = () => {
     }
   }, [game]); // Depend on game state changes
 
+  // Keyboard Navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        setViewIndex(prev => {
+          if (prev === -1) return history.length - 2;
+          return Math.max(-1, prev - 1);
+        });
+      } else if (e.key === 'ArrowRight') {
+        setViewIndex(prev => {
+          if (prev === -1 || prev === history.length - 1) return -1;
+          return prev + 1 === history.length - 1 ? -1 : prev + 1;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [history.length, setViewIndex]);
+
   const handleNewGame = () => {
     resetGame();
     setShowReview(false);
@@ -103,12 +140,12 @@ const PlayPage = () => {
         </div>
 
         <ChessBoard 
-          game={game} 
+          game={displayGame} 
           onMove={makeMove} 
-          disabled={game.turn() === 'b' || isAiThinking || game.isGameOver()}
-          lastMove={lastMove}
+          disabled={game.turn() === 'b' || isAiThinking || game.isGameOver() || viewIndex !== -1}
+          lastMove={displayLastMove}
           hint={hint}
-          lastMoveAnalysis={lastMoveAnalysis}
+          lastMoveAnalysis={viewIndex === -1 ? lastMoveAnalysis : null}
         />
         
         {/* Player Info */}
@@ -179,6 +216,11 @@ const PlayPage = () => {
                         <span>Show Analysis / Coach</span>
                     </label>
                 </div>
+                {viewIndex !== -1 && (
+                  <button className="primary full-width" style={{marginTop: '10px'}} onClick={() => setViewIndex(-1)}>
+                    Return to Live Game
+                  </button>
+                )}
              </div>
           )}
 
@@ -189,14 +231,26 @@ const PlayPage = () => {
                   return (
                     <div key={i} className="move-row">
                       <span className="move-num">{Math.floor(i/2) + 1}.</span>
-                      <span className="move white">{move.san}</span>
-                      {history[i+1] && <span className="move black">{history[i+1].san}</span>}
+                      <span 
+                        className={`move white ${viewIndex === i ? 'active' : ''}`}
+                        onClick={() => setViewIndex(i)}
+                      >
+                        {move.san}
+                      </span>
+                      {history[i+1] && (
+                        <span 
+                          className={`move black ${viewIndex === i + 1 ? 'active' : ''}`}
+                          onClick={() => setViewIndex(i + 1)}
+                        >
+                          {history[i+1].san}
+                        </span>
+                      )}
                     </div>
                   );
                 }
                 return null;
               })}
-              <div ref={el => el?.scrollIntoView()} />
+              <div ref={el => { if (viewIndex === -1) el?.scrollIntoView({ behavior: 'smooth' }); }} />
             </div>
           )}
           

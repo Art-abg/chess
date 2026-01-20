@@ -17,6 +17,7 @@ export default function useChessGame() {
   const [currentBestMove, setCurrentBestMove] = useState(null);
   const [hint, setHint] = useState(null);
   const [lastMoveAnalysis, setLastMoveAnalysis] = useState(null);
+  const [viewIndex, setViewIndex] = useState(-1); // -1 means live (end of history)
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -164,6 +165,7 @@ export default function useChessGame() {
         // Reset analysis until new result comes
         // setLastMoveAnalysis(null); // Optional: keep old until new arrives? Better to clear to show "analyzing..."
 
+        setViewIndex(-1); // Reset view to live on new move
         return true;
       }
     } catch (e) {
@@ -205,6 +207,7 @@ export default function useChessGame() {
     prevGameState.current = { eval: 0, bestMove: null };
     setHint(null);
     setLastMoveAnalysis(null);
+    setViewIndex(-1);
   };
 
   const undo = () => {
@@ -254,6 +257,7 @@ export default function useChessGame() {
     setLastMoveAnalysis(null);
     setCurrentBestMove(null);
     prevGameState.current = { eval: 0, bestMove: null };
+    setViewIndex(-1);
     
     // Restart Analysis for the restored position
     // We need to wait for state update or just use the new fen logic?
@@ -319,6 +323,8 @@ export default function useChessGame() {
     hint,
     lastMoveAnalysis,
     setShowAnalysis, // Expose toggle
-    showAnalysis
+    showAnalysis,
+    viewIndex,
+    setViewIndex
   };
 }
