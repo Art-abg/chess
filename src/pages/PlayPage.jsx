@@ -36,7 +36,8 @@ const PlayPage = () => {
     viewIndex,
     setViewIndex,
     boardTheme,
-    setBoardTheme
+    setBoardTheme,
+    analysisCache
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -69,6 +70,11 @@ const PlayPage = () => {
     });
     return { whiteCaptures: w, blackCaptures: b };
   }, [history]);
+
+  const currentAnalysis = useMemo(() => {
+    if (viewIndex === -1) return lastMoveAnalysis;
+    return analysisCache[viewIndex] || null;
+  }, [viewIndex, lastMoveAnalysis, analysisCache]);
 
   useEffect(() => {
     if (game.turn() === 'b' && !game.isGameOver()) {
@@ -148,7 +154,7 @@ const PlayPage = () => {
           disabled={game.turn() === 'b' || isAiThinking || game.isGameOver() || viewIndex !== -1}
           lastMove={displayLastMove}
           hint={hint}
-          lastMoveAnalysis={viewIndex === -1 ? lastMoveAnalysis : null}
+          lastMoveAnalysis={currentAnalysis}
         />
         
         {/* Player Info */}
@@ -174,6 +180,19 @@ const PlayPage = () => {
                 <div className="game-status">
                   {status}
                   {hint && <div className="hint-text">Hint: Try moving to {hint}</div>}
+                  
+                  {currentAnalysis && (
+                    <div className={`analysis-feedback ${currentAnalysis.style}`}>
+                      <div className="feedback-header">
+                        <span className="label">
+                            {currentAnalysis.classification.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="explanation">
+                        {currentAnalysis.explanation}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bot-selector">

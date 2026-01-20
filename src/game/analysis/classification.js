@@ -59,3 +59,19 @@ export function getEvaluationLossThreshold(classif, prevEval) {
 
     return Math.max(threshold, 0);
 }
+
+export function getClassificationStyle(classif) {
+    const styles = {
+        [Classification.BRILLIANT]: { icon: '!!', color: '#1baca6' },
+        [Classification.GREAT]: { icon: '!', color: '#5c8bb0' },
+        [Classification.BEST]: { icon: '★', color: '#96bc4b' },
+        [Classification.EXCELLENT]: { icon: '★', color: '#96bc4b' },
+        [Classification.GOOD]: { icon: '✓', color: '#a88d5e' },
+        [Classification.BOOK]: { icon: '📖', color: '#a8886d' },
+        [Classification.INACCURACY]: { icon: '?!', color: '#f0c15e' },
+        [Classification.MISTAKE]: { icon: '?', color: '#e6912c' },
+        [Classification.BLUNDER]: { icon: '??', color: '#b33430' },
+        [Classification.FORCED]: { icon: '→', color: '#989795' }
+    };
+    return styles[classif] || { icon: '', color: 'transparent' };
+}

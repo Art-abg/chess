@@ -3,7 +3,12 @@ import { Chess } from 'chess.js';
 import { getBotById } from '../game/Bots';
 import { classifyMove } from '../game/analysis/analysis';
 // Class names match the Classification enum values effectively, so we can use them directly.
-import { Classification } from '../game/analysis/classification';
+import {
+    Classification,
+    centipawnClassifications,
+    getEvaluationLossThreshold,
+    getClassificationStyle
+} from "../game/analysis/classification";
 import useSound from './useSound';
 
 export const BOARD_THEMES = {
@@ -47,6 +52,7 @@ export default function useChessGame() {
   const [lastMoveAnalysis, setLastMoveAnalysis] = useState(null);
   const [viewIndex, setViewIndex] = useState(-1); // -1 means live (end of history)
   const [boardTheme, setBoardTheme] = useState('green');
+  const [analysisCache, setAnalysisCache] = useState({}); // Key: moveIndex, Value: { classification, explanation, style, eval, depth }
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -57,6 +63,7 @@ export default function useChessGame() {
   const botWorker = useRef(null);
   const analysisWorker = useRef(null);
   const prevGameState = useRef({ eval: 0, bestMove: null });
+  const analysisCacheRef = useRef({});
 
   const updateStatus = useCallback((currentGame, latestMoveResult) => {
     let status = '';
@@ -130,41 +137,60 @@ export default function useChessGame() {
         const { type, eval: score, bestMove } = e.data;
 
         if (type === 'ANALYSIS_RESULT') {
+            const depth = e.data.depth;
             setCurrentEval(score);
             if (bestMove) setCurrentBestMove(bestMove);
     
             // Classify the LAST move played (if settings on)
             if (showAnalysis) {
-                 setGame(currentG => {
-                     const history = currentG.history({ verbose: true });
-                     if (history.length > 0) {
-                         const lastMove = history[history.length - 1];
-                         
-                         // We need the eval BEFORE this move to look for blunders.
-                         // stored in prevGameState.current.eval
-                         
-                         const classification = classifyMove(
-                             prevGameState.current.eval,
-                             score, // current eval (Position B)
-                             lastMove,
-                             prevGameState.current.bestMove,
-                             currentG.isCheckmate(),
-                             currentG.fen(), // We might need previous FEN for hanging check, but let's start simple
-                             currentG.fen()
-                         );
-                         
-                         // Simple explanation generator based on classification
-                         const explanation = `This move is considered ${classification}.`;
-                         
-                         setLastMoveAnalysis({
-                             classification,
-                             explanation,
-                             style: classification, // Use string directly as class name
-                             moveSan: lastMove.san
-                         });
-                     }
-                     return currentG;
-                 });
+                 const movesHistory = game.history({ verbose: true });
+                 if (movesHistory.length > 0) {
+                     const moveIndex = movesHistory.length - 1;
+                     const lastMove = movesHistory[moveIndex];
+                     
+                     // Skip if we already have a deeper analysis for this move
+                     const existing = analysisCacheRef.current[moveIndex];
+                     if (existing && existing.depth >= depth) return;
+
+                     const classification = classifyMove(
+                         prevGameState.current.eval,
+                         score, // current eval (Position B)
+                         lastMove,
+                         prevGameState.current.bestMove,
+                         game.isCheckmate(),
+                         game.fen(),
+                         game.fen()
+                     );
+                     
+                     const style = getClassificationStyle(classification);
+                     
+                     const explanations = {
+                         [Classification.BRILLIANT]: "An unbelievable sacrifice that improves your position!",
+                         [Classification.GREAT]: "A very strong move that finds a critical line.",
+                         [Classification.BEST]: "This was the best move in the position!",
+                         [Classification.EXCELLENT]: "A very strong move, maintaining your advantage.",
+                         [Classification.GOOD]: "A solid move that keeps the game steady.",
+                         [Classification.BOOK]: "A standard theoretical move.",
+                         [Classification.INACCURACY]: "A slight mistake that lets some advantage slip.",
+                         [Classification.MISTAKE]: "A bad move that significantly hurts your position.",
+                         [Classification.BLUNDER]: "A terrible mistake that loses material or the game.",
+                         [Classification.FORCED]: "The only move that keeps you in the game."
+                     };
+
+                     const newAnalysis = {
+                         classification,
+                         explanation: explanations[classification] || `This move is ${classification}.`,
+                         style: style,
+                         classificationClass: classification, // For CSS
+                         moveSan: lastMove.san,
+                         eval: score,
+                         depth: depth
+                     };
+
+                     analysisCacheRef.current[moveIndex] = newAnalysis;
+                     setAnalysisCache({ ...analysisCacheRef.current });
+                     setLastMoveAnalysis(newAnalysis);
+                 }
             }
         }
     };
@@ -244,6 +270,8 @@ export default function useChessGame() {
     setHint(null);
     setLastMoveAnalysis(null);
     setViewIndex(-1);
+    setAnalysisCache({});
+    analysisCacheRef.current = {};
   };
 
   const undo = () => {
@@ -363,6 +391,7 @@ export default function useChessGame() {
     viewIndex,
     setViewIndex,
     boardTheme,
-    setBoardTheme
+    setBoardTheme,
+    analysisCache
   };
 }
