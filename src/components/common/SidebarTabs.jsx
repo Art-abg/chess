@@ -17,6 +17,12 @@ const SidebarTabs = ({ activeTab, onTabChange }) => {
         Moves
       </button>
       <button 
+        className={`tab-btn ${activeTab === 'review' ? 'active' : ''}`}
+        onClick={() => onTabChange('review')}
+      >
+        Review
+      </button>
+      <button 
         className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
         onClick={() => onTabChange('chat')}
       >

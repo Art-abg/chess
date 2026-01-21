@@ -66,7 +66,8 @@ function handleEngineMessage(line) {
         const msg = {
             type: 'ANALYSIS_RESULT',
             eval: normalizeScore(lastEval),
-            depth: parseInt(depthMatch[1])
+            depth: parseInt(depthMatch[1]),
+            moveIndex: pendingAnalysis.moveIndex // Send it back
         };
         
         if (pvMatch) {
@@ -96,7 +97,7 @@ self.onmessage = (e) => {
     sendCommand(`position fen ${fen}`);
     sendCommand(`go depth ${depth || 10}`);
   } else if (type === 'ANALYZE') {
-    pendingAnalysis = { fen };
+    pendingAnalysis = { fen, moveIndex: e.data.moveIndex }; // Store moveIndex from e.data
     sendCommand('stop');
     sendCommand(`position fen ${fen}`);
     sendCommand(`go depth ${depth || 12}`);

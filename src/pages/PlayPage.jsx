@@ -10,6 +10,7 @@ import { useGame } from '../context/GameContext';
 import { BOTS, getBotById } from '../game/Bots';
 import '../styles/board.css';
 import '../styles/analysis.css';
+import '../styles/review.css';
 import '../styles/responsive.css';
 
 const PlayPage = () => {
@@ -38,7 +39,12 @@ const PlayPage = () => {
     boardTheme,
     setBoardTheme,
     analysisCache,
-    isAnalyzingHint
+    isAnalyzingHint,
+    isReviewing,
+    accuracy,
+    moveStats,
+    startFullGameReview,
+    calculateFinalAccuracy
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -155,7 +161,7 @@ const PlayPage = () => {
           disabled={game.turn() === 'b' || isAiThinking || game.isGameOver() || viewIndex !== -1}
           lastMove={displayLastMove}
           hint={hint}
-          lastMoveAnalysis={currentAnalysis}
+          analysisCache={analysisCache}
         />
         
         {/* Player Info */}
@@ -285,6 +291,72 @@ const PlayPage = () => {
               </div>
           )}
 
+          {activeTab === 'review' && (
+            <div className="review-tab">
+              {!isReviewing ? (
+                <div className="review-start">
+                  <h3>Game Review</h3>
+                  <p>Get a detailed analysis of your game with accuracy scores and coach explanations.</p>
+                  <button className="primary-btn" onClick={startFullGameReview}>
+                    Start Game Review
+                  </button>
+                </div>
+              ) : (
+                <div className="review-content" style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                  <div className="accuracy-summary">
+                    <div className="accuracy-card white">
+                      <div className="percentage">{Math.round(accuracy.white)}%</div>
+                      <div className="label">White Accuracy</div>
+                    </div>
+                    <div className="accuracy-card black">
+                      <div className="percentage">{Math.round(accuracy.black)}%</div>
+                      <div className="label">Black Accuracy</div>
+                    </div>
+                  </div>
+
+                  <div className="review-controls">
+                    <button 
+                      className="primary-btn full-width"
+                      onClick={() => setViewIndex(0)}
+                    >
+                      Step through moves
+                    </button>
+                    <div className="navigation" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px'}}>
+                      <button onClick={() => setViewIndex(prev => Math.max(-1, prev - 1))}>← Prev</button>
+                      <button onClick={() => setViewIndex(prev => prev < history.length - 1 ? prev + 1 : -1)}>Next →</button>
+                    </div>
+                  </div>
+
+                  <div className="coach-segment">
+                    <h4>Coach Insights</h4>
+                    {currentAnalysis ? (
+                      <div className={`coach-feedback ${currentAnalysis.classificationClass}`}>
+                         <div className="badge">{currentAnalysis.style.icon} {currentAnalysis.classificationClass.toUpperCase()}</div>
+                         <p>{currentAnalysis.explanation}</p>
+                      </div>
+                    ) : (
+                      <p className="no-analysis">Select a move in history to see coach insights.</p>
+                    )}
+                  </div>
+
+                  <div className="stats-comparison">
+                     <div className="stat-header">
+                        <span>White</span>
+                        <span>Classification</span>
+                        <span>Black</span>
+                     </div>
+                     {['brilliant', 'great', 'best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'].map(c => (
+                       <div key={c} className={`stat-line ${c}`}>
+                          <span>{moveStats.white[c]}</span>
+                          <span className="name">{c.charAt(0).toUpperCase() + c.slice(1)}</span>
+                          <span>{moveStats.black[c]}</span>
+                       </div>
+                     ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === 'settings' && (
               <div className="settings-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   <ThemeSelector currentTheme={boardTheme} onThemeChange={setBoardTheme} />

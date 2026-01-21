@@ -5,7 +5,7 @@ const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
 export default function ChessBoard(props) {
-  const { game, onMove, disabled, lastMove, hint, lastMoveAnalysis } = props;
+  const { game, onMove, disabled, lastMove, hint, analysisCache } = props;
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
 
@@ -60,10 +60,20 @@ export default function ChessBoard(props) {
             const isCapture = isPossibleMove && piece;
             const isHint = props.hint && (props.hint.from === square || props.hint.to === square);
 
-            // Check for analysis icon on this square (only if it's the destination of the last move)
-            const analysisIcon = (lastMoveAnalysis && lastMoveAnalysis.moveSan === props.lastMove?.san && props.lastMove?.to === square) 
-                                ? lastMoveAnalysis.style 
-                                : null;
+            // Analysis Icon logic: Look through the last 2 moves in history 
+            // to ensure player moves stay visible after an instant bot response.
+            let analysisIcon = null;
+            if (analysisCache) {
+                const history = game.history({ verbose: true });
+                const startIdx = Math.max(0, history.length - 2);
+                for (let i = history.length - 1; i >= startIdx; i--) {
+                    const m = history[i];
+                    if (m.to === square && analysisCache[i]) {
+                        analysisIcon = analysisCache[i].style;
+                        break; 
+                    }
+                }
+            }
 
             return (
               <div

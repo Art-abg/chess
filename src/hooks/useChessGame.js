@@ -7,7 +7,8 @@ import {
     Classification,
     centipawnClassifications,
     getEvaluationLossThreshold,
-    getClassificationStyle
+    getClassificationStyle,
+    classificationValues
 } from "../game/analysis/classification";
 import useSound from './useSound';
 
@@ -54,6 +55,12 @@ export default function useChessGame() {
   const [boardTheme, setBoardTheme] = useState('green');
   const [analysisCache, setAnalysisCache] = useState({}); // Key: moveIndex, Value: { classification, explanation, style, eval, depth }
   const [isAnalyzingHint, setIsAnalyzingHint] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [accuracy, setAccuracy] = useState({ white: 0, black: 0 });
+  const [moveStats, setMoveStats] = useState({
+      white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 },
+      black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
+  });
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -73,6 +80,67 @@ export default function useChessGame() {
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
+
+  const processAnalysisUpdate = useCallback((score, depth, moveIndex, bestMove) => {
+    if (!showAnalysisRef.current) return;
+    
+    const movesHistory = gameRef.current.history({ verbose: true });
+    if (moveIndex === undefined || moveIndex < 0 || moveIndex >= movesHistory.length) return;
+
+    const lastMove = movesHistory[moveIndex];
+    
+    // Skip if we already have a deeper analysis for this move
+    const existing = analysisCacheRef.current[moveIndex];
+    if (existing && existing.depth >= depth) return;
+
+    // For classification, we need prev eval.
+    const prevAnalysis = moveIndex > 0 ? analysisCacheRef.current[moveIndex - 1] : null;
+    const prevEvalVal = prevAnalysis ? prevAnalysis.eval : 0;
+    const prevBestMoveVal = prevAnalysis ? prevAnalysis.bestMove : null;
+
+    const classification = classifyMove(
+        prevEvalVal,
+        score,
+        lastMove,
+        prevBestMoveVal,
+        gameRef.current.isCheckmate() && moveIndex === movesHistory.length - 1,
+        null, 
+        null
+    );
+    
+    const style = getClassificationStyle(classification);
+    
+    const explanations = {
+        [Classification.BRILLIANT]: "An unbelievable sacrifice that improves your position! You found a move that the computer initially didn't even see.",
+        [Classification.GREAT]: "A very strong move that finds a critical line and keeps the pressure on.",
+        [Classification.BEST]: "This was the best move in the position, exactly what the engine recommended.",
+        [Classification.EXCELLENT]: "A very strong move, maintaining your advantage and following the right plan.",
+        [Classification.GOOD]: "A solid move that keeps the game steady without making things worse.",
+        [Classification.BOOK]: "A standard theoretical move from the opening book.",
+        [Classification.INACCURACY]: "A slight mistake that lets some of your advantage slip away. There was a better way.",
+        [Classification.MISTAKE]: "A bad move that significantly hurts your position. You've given your opponent an opening.",
+        [Classification.BLUNDER]: "A terrible mistake that loses material or the game immediately. Watch out!",
+        [Classification.FORCED]: "The only move that keeps you in the game. You had no choice!"
+    };
+
+    const newAnalysis = {
+        classification,
+        explanation: explanations[classification] || `This move is ${classification}.`,
+        style: style,
+        classificationClass: classification,
+        moveSan: lastMove.san,
+        eval: score,
+        depth: depth,
+        bestMove: bestMove
+    };
+
+    analysisCacheRef.current[moveIndex] = newAnalysis;
+    setAnalysisCache({ ...analysisCacheRef.current });
+    
+    if (moveIndex === movesHistory.length - 1) {
+        setLastMoveAnalysis(newAnalysis);
+    }
+  }, []);
 
   useEffect(() => {
     showAnalysisRef.current = showAnalysis;
@@ -109,9 +177,18 @@ export default function useChessGame() {
     botWorker.current = new Worker('/engine/worker.js', { type: 'classic' });
     
     botWorker.current.onmessage = (e) => {
-      const { type, move } = e.data;
+      const { type, move, eval: botEval } = e.data;
       
       if (type === 'MOVE_RESULT') {
+        // Diamond Fix: Use the bot's own internal search eval to immediately classify the player's move
+        if (botEval !== undefined) {
+            const moves = gameRef.current.history({ verbose: true });
+            if (moves.length > 0) {
+                // Classify the move that led to the bot searching (the player's move)
+                processAnalysisUpdate(botEval, 10, moves.length - 1, move);
+            }
+        }
+
         if (move) {
           setGame(g => {
             const newGame = new Chess();
@@ -132,7 +209,12 @@ export default function useChessGame() {
                 
                 // Trigger Analysis for the new position (on the separate worker)
                 if (analysisWorker.current) {
-                    analysisWorker.current.postMessage({ type: 'ANALYZE', fen: newGame.fen() });
+                    const moves = newGame.history({ verbose: true });
+                    analysisWorker.current.postMessage({ 
+                        type: 'ANALYZE', 
+                        fen: newGame.fen(),
+                        moveIndex: moves.length - 1 // Analyze the move that was JUST played
+                    });
                 }
               }
             } catch(e) { console.error('Invalid AI move', move); }
@@ -151,63 +233,16 @@ export default function useChessGame() {
 
         if (type === 'ANALYSIS_RESULT') {
             const depth = e.data.depth;
+            const moveIndex = e.data.moveIndex; // New: Get move index from worker
+            
             setCurrentEval(score);
             if (bestMove) {
                 setCurrentBestMove(bestMove);
                 setIsAnalyzingHint(false);
             }
     
-            // Classify the LAST move played (if settings on)
-            if (showAnalysisRef.current) {
-                 const movesHistory = gameRef.current.history({ verbose: true });
-                 if (movesHistory.length > 0) {
-                     const moveIndex = movesHistory.length - 1;
-                     const lastMove = movesHistory[moveIndex];
-                     
-                     // Skip if we already have a deeper analysis for this move
-                     const existing = analysisCacheRef.current[moveIndex];
-                     if (existing && existing.depth >= depth) return;
-
-                     const classification = classifyMove(
-                         prevGameState.current.eval,
-                         score, // current eval (Position B)
-                         lastMove,
-                         prevGameState.current.bestMove,
-                         gameRef.current.isCheckmate(),
-                         gameRef.current.fen(),
-                         gameRef.current.fen()
-                     );
-                     
-                     const style = getClassificationStyle(classification);
-                     
-                     const explanations = {
-                         [Classification.BRILLIANT]: "An unbelievable sacrifice that improves your position!",
-                         [Classification.GREAT]: "A very strong move that finds a critical line.",
-                         [Classification.BEST]: "This was the best move in the position!",
-                         [Classification.EXCELLENT]: "A very strong move, maintaining your advantage.",
-                         [Classification.GOOD]: "A solid move that keeps the game steady.",
-                         [Classification.BOOK]: "A standard theoretical move.",
-                         [Classification.INACCURACY]: "A slight mistake that lets some advantage slip.",
-                         [Classification.MISTAKE]: "A bad move that significantly hurts your position.",
-                         [Classification.BLUNDER]: "A terrible mistake that loses material or the game.",
-                         [Classification.FORCED]: "The only move that keeps you in the game."
-                     };
-
-                     const newAnalysis = {
-                         classification,
-                         explanation: explanations[classification] || `This move is ${classification}.`,
-                         style: style,
-                         classificationClass: classification, // For CSS
-                         moveSan: lastMove.san,
-                         eval: score,
-                         depth: depth
-                     };
-
-                     analysisCacheRef.current[moveIndex] = newAnalysis;
-                     setAnalysisCache({ ...analysisCacheRef.current });
-                     setLastMoveAnalysis(newAnalysis);
-                 }
-            }
+            // Use general analysis worker results (Diamond Sync)
+            processAnalysisUpdate(score, depth, moveIndex, bestMove);
         }
     };
 
@@ -240,7 +275,12 @@ export default function useChessGame() {
         
         // Trigger Analysis for the new position
         if (analysisWorker.current) {
-            analysisWorker.current.postMessage({ type: 'ANALYZE', fen: game.fen() });
+            const moves = game.history({ verbose: true });
+            analysisWorker.current.postMessage({ 
+                type: 'ANALYZE', 
+                fen: game.fen(),
+                moveIndex: moves.length - 1
+            });
         }
         
         // Reset analysis until new result comes
@@ -297,6 +337,12 @@ export default function useChessGame() {
     setViewIndex(-1);
     setAnalysisCache({});
     analysisCacheRef.current = {};
+    setIsReviewing(false);
+    setAccuracy({ white: 0, black: 0 });
+    setMoveStats({
+        white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 },
+        black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
+    });
   };
 
   const undo = () => {
@@ -390,6 +436,91 @@ export default function useChessGame() {
     }
   };
 
+  const startFullGameReview = useCallback(async () => {
+    setIsReviewing(true);
+    const movesHistory = game.history({ verbose: true });
+    
+    // Clear cache if we want a fresh review, or keep it.
+    // Let's keep it to save time on moves already analyzed.
+    
+    const analyzeMoveSequential = async (index) => {
+        if (index >= movesHistory.length) {
+            calculateFinalAccuracy();
+            return;
+        }
+
+        // Check cache
+        if (analysisCacheRef.current[index] && analysisCacheRef.current[index].depth >= 14) {
+             analyzeMoveSequential(index + 1);
+             return;
+        }
+
+        // Reconstruct position
+        const tempG = new Chess();
+        for (let i = 0; i <= index; i++) {
+            tempG.move(movesHistory[i].san);
+        }
+
+        // Send request
+        analysisWorker.current.postMessage({ 
+            type: 'ANALYZE', 
+            fen: tempG.fen(), 
+            depth: 14, 
+            moveIndex: index 
+        });
+
+        // We need to wait for the analysis to be "finished" (reached depth)
+        // This is tricky because the worker sends many updates.
+        // We'll use a simple interval or a promise that resolves when cache[index] hits depth.
+        
+        const checkDone = setInterval(() => {
+            const cached = analysisCacheRef.current[index];
+            if (cached && cached.depth >= 14) {
+                clearInterval(checkDone);
+                analyzeMoveSequential(index + 1);
+            }
+        }, 100);
+    };
+
+    analyzeMoveSequential(0);
+  }, [game]);
+
+  const calculateFinalAccuracy = useCallback(() => {
+      const movesHistory = game.history({ verbose: true });
+      const stats = {
+          white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 },
+          black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
+      };
+      
+      let whiteTotalAcc = 0;
+      let whiteMoves = 0;
+      let blackTotalAcc = 0;
+      let blackMoves = 0;
+
+      movesHistory.forEach((move, index) => {
+          const analysis = analysisCacheRef.current[index];
+          if (analysis) {
+              const color = move.color === 'w' ? 'white' : 'black';
+              stats[color][analysis.classificationClass]++;
+              
+              const accValue = classificationValues[analysis.classificationClass] * 100;
+              if (move.color === 'w') {
+                  whiteTotalAcc += accValue;
+                  whiteMoves++;
+              } else {
+                  blackTotalAcc += accValue;
+                  blackMoves++;
+              }
+          }
+      });
+
+      setMoveStats(stats);
+      setAccuracy({
+          white: whiteMoves > 0 ? whiteTotalAcc / whiteMoves : 100,
+          black: blackMoves > 0 ? blackTotalAcc / blackMoves : 100
+      });
+  }, [game]);
+
   return {
     game,
     fen,
@@ -413,6 +544,11 @@ export default function useChessGame() {
     boardTheme,
     setBoardTheme,
     analysisCache,
-    isAnalyzingHint
+    isAnalyzingHint,
+    isReviewing,
+    accuracy,
+    moveStats,
+    startFullGameReview,
+    calculateFinalAccuracy
   };
 }
