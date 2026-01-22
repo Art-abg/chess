@@ -339,3 +339,27 @@ input[type="checkbox"] {
       height: auto;
   }
 }
+
+/* AI Thinking Animation */
+@keyframes thinkingPulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); box-shadow: 0 0 15px var(--accent-green); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.thinking-pulse {
+  animation: thinkingPulse 1.5s infinite ease-in-out;
+  position: relative;
+}
+
+.thinking-pulse::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid var(--accent-green);
+  border-radius: 6px;
+  animation: thinkingPulse 1.5s infinite ease-in-out;
+}

@@ -172,3 +172,28 @@
 
 .stat-line.brilliant .name { color: #1baca6; }
 .stat-line.blunder .name { color: #b33430; }
+
+.mistake-btn {
+    background: #e6912c;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.mistake-btn:hover {
+    background: #cf8227;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(230, 145, 44, 0.3);
+}
+
+.mistake-btn:active {
+    transform: translateY(0);
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Chess } from 'chess.js';
 import confetti from 'canvas-confetti';
 import ChessBoard from '../components/ChessBoard';
 import EvaluationBar from '../components/EvaluationBar';
@@ -43,8 +44,7 @@ const PlayPage = () => {
     isReviewing,
     accuracy,
     moveStats,
-    startFullGameReview,
-    calculateFinalAccuracy
+    startFullGameReview
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -128,6 +128,25 @@ const PlayPage = () => {
     setShowReview(false);
   };
 
+  const jumpToNextMistake = () => {
+    const startIndex = viewIndex === -1 ? history.length - 1 : viewIndex;
+    for (let i = startIndex + 1; i < history.length; i++) {
+        const analysis = analysisCache[i];
+        if (analysis && (analysis.classificationClass === 'mistake' || analysis.classificationClass === 'blunder' || analysis.classificationClass === 'inaccuracy')) {
+            setViewIndex(i);
+            return;
+        }
+    }
+    // Loop back to start if not found after current
+    for (let i = 0; i <= startIndex; i++) {
+        const analysis = analysisCache[i];
+        if (analysis && (analysis.classificationClass === 'mistake' || analysis.classificationClass === 'blunder' || analysis.classificationClass === 'inaccuracy')) {
+            setViewIndex(i);
+            return;
+        }
+    }
+  };
+
   return (
     <div className="main-content">
       {/* Left Side: Evaluation Bar */}
@@ -139,7 +158,7 @@ const PlayPage = () => {
         {/* Opponent (Bot) Info */}
         <div className="player-info top">
           <div className="player-details">
-            <div className="avatar ai" style={{ backgroundColor: currentBot.color }}>
+            <div className={`avatar ai ${isAiThinking ? 'thinking-pulse' : ''}`} style={{ backgroundColor: currentBot.color }}>
                {currentBot.name[0]}
             </div>
             <div className="username">
@@ -325,6 +344,13 @@ const PlayPage = () => {
                       <button onClick={() => setViewIndex(prev => Math.max(-1, prev - 1))}>← Prev</button>
                       <button onClick={() => setViewIndex(prev => prev < history.length - 1 ? prev + 1 : -1)}>Next →</button>
                     </div>
+                    <button 
+                        className="mistake-btn full-width" 
+                        style={{marginTop: '8px'}}
+                        onClick={jumpToNextMistake}
+                    >
+                        🚩 Next Mistake
+                    </button>
                   </div>
 
                   <div className="coach-segment">

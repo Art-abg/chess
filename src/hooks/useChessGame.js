@@ -5,8 +5,6 @@ import { classifyMove } from '../game/analysis/analysis';
 // Class names match the Classification enum values effectively, so we can use them directly.
 import {
     Classification,
-    centipawnClassifications,
-    getEvaluationLossThreshold,
     getClassificationStyle,
     classificationValues
 } from "../game/analysis/classification";
@@ -37,6 +35,16 @@ export const BOARD_THEMES = {
     name: 'Purple',
     light: '#efefef',
     dark: '#8877b7'
+  },
+  neon: {
+    name: 'Neon',
+    light: '#1a1a1a',
+    dark: '#00ff41'
+  },
+  ocean: {
+    name: 'Ocean',
+    light: '#e0f7fa',
+    dark: '#006064'
   }
 };
 
@@ -194,7 +202,7 @@ export default function useChessGame() {
             const newGame = new Chess();
             try {
                 newGame.loadPgn(g.pgn());
-            } catch (e) {
+            } catch {
                 newGame.load(g.fen()); 
             }
             
@@ -217,7 +225,7 @@ export default function useChessGame() {
                     });
                 }
               }
-            } catch(e) { console.error('Invalid AI move', move); }
+            } catch { console.error('Invalid AI move', move); }
             return newGame;
           });
         }
@@ -292,7 +300,7 @@ export default function useChessGame() {
         setIsAnalyzingHint(false);
         return true;
       }
-    } catch (e) {
+    } catch {
       return false;
     }
     return false;
@@ -364,7 +372,7 @@ export default function useChessGame() {
         const newG = new Chess();
         try {
             newG.loadPgn(g.pgn());
-        } catch(e) {
+        } catch {
            newG.load(g.fen()); // Fallback
         }
 
