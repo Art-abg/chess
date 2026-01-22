@@ -9,6 +9,7 @@ import {
     classificationValues
 } from "../game/analysis/classification";
 import useSound from './useSound';
+import { detectOpening } from '../game/openings';
 
 export const BOARD_THEMES = {
   green: {
@@ -69,6 +70,7 @@ export default function useChessGame() {
       white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 },
       black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
   });
+  const [currentOpening, setCurrentOpening] = useState(null);
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -176,7 +178,12 @@ export default function useChessGame() {
       }
     }
     setStatus(status);
-    setHistory(currentGame.history({ verbose: true }));
+    const newHistory = currentGame.history({ verbose: true });
+    setHistory(newHistory);
+    
+    // Opening Detection
+    const opening = detectOpening(newHistory);
+    if (opening) setCurrentOpening(opening);
   }, [playMove, playCapture, playCheck, playGameEnd]);
 
   // Initialize Workers
@@ -351,6 +358,7 @@ export default function useChessGame() {
         white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 },
         black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
     });
+    setCurrentOpening(null);
   };
 
   const undo = () => {
@@ -557,6 +565,7 @@ export default function useChessGame() {
     accuracy,
     moveStats,
     startFullGameReview,
-    calculateFinalAccuracy
+    calculateFinalAccuracy,
+    currentOpening
   };
 }

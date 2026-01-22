@@ -44,7 +44,8 @@ const PlayPage = () => {
     isReviewing,
     accuracy,
     moveStats,
-    startFullGameReview
+    startFullGameReview,
+    currentOpening
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -275,6 +276,11 @@ const PlayPage = () => {
 
           {activeTab === 'moves' && (
             <div className="moves-history">
+              {currentOpening && (
+                <div className="opening-name" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', color: 'var(--accent-green)', fontWeight: 'bold' }}>
+                  📖 {currentOpening}
+                </div>
+              )}
               {history.map((move, i) => {
                 if (i % 2 === 0) {
                   return (
