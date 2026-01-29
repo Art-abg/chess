@@ -3,20 +3,26 @@ import { Chess } from 'chess.js';
 
 // Heuristic accuracy calculation based on Centipawn Loss (CPL)
 function calculateAccuracy(cpl) {
-    if (cpl < 0) cpl = 0; // Should not happen for loss
-    // Formula approximation: 
-    // 0 cpl = 100%
-    // 50 cpl = ~95%
-    // 100 cpl = ~90%
-    // 300 cpl = ~50%
+    if (cpl < 0) cpl = 0;
     return Math.max(0, 100 * Math.exp(-0.003 * cpl));
 }
 
-export async function generateGameReport(history, playerColor = 'w') {
-    // We need to run the engine for every move.
-    // Since we don't have a sync engine, we need to spawn a temporary worker or use the existing one.
-    // For simplicity/performance in this demo, let's assume we can spawn a fast worker.
+function classifyMove(diff, isBest, beforeEval) {
+    // Diff is the loss for the player who just moved
+    if (isBest) {
+        // Brilliant: If it's best AND it was a tough position or a sacrifice
+        // (Simplification: if it was the only move that didn't lose evaluation significantly)
+        return 'best';
+    }
     
+    if (diff <= 20) return 'excellent';
+    if (diff <= 50) return 'good';
+    if (diff <= 150) return 'inaccuracy';
+    if (diff <= 300) return 'mistake';
+    return 'blunder';
+}
+
+export async function generateGameReport(history, playerColor = 'w') {
     return new Promise((resolve) => {
         const worker = new Worker('/engine/worker.js', { type: 'classic' });
         const report = {
@@ -24,7 +30,9 @@ export async function generateGameReport(history, playerColor = 'w') {
             moveStats: {
                 brilliant: 0,
                 best: 0,
+                excellent: 0,
                 good: 0,
+                inaccuracy: 0,
                 mistake: 0,
                 blunder: 0,
                 book: 0
@@ -37,120 +45,96 @@ export async function generateGameReport(history, playerColor = 'w') {
         let countedMoves = 0;
         const tempGame = new Chess();
         
-        // Helper to process next move
+        let state = 'WAITING_BEFORE'; // 'WAITING_BEFORE' or 'WAITING_AFTER'
+        let currentBeforeEval = 0;
+        let currentBestMove = '';
+
         const processNextMove = () => {
             if (moveIndex >= history.length) {
-                // Done
                 report.accuracy = countedMoves > 0 ? (cumulativeAccuracy / countedMoves) : 100;
                 worker.terminate();
                 resolve(report);
                 return;
             }
             
-            const move = history[moveIndex];
-            // We need eval BEFORE the move (to see if it was the best move)
-            // But actually we need eval AFTER the move to compare with best possible.
-            // Simplified approach: Analyze position BEFORE move. Get Top 1 Move.
-            // Compare played move with Top 1.
-            
-            // Or use the existing MoveClassifier logic?
-            // "Best" means it matches engine's best move.
-            
-            // Let's set position
-            // Let's set position
-            const fen = tempGame.fen();
-            
-            // To ensure safety, we construct a strict move object
-            // passing the full verbose object can sometimes cause issues if extra properties are present
-            try {
-                const moveObj = {
-                    from: move.from,
-                    to: move.to,
-                    promotion: move.promotion // 'q', 'r', 'b', 'n' or undefined
-                };
-                tempGame.move(moveObj); 
-            } catch (e) {
-                console.error("GameReview internal error applying move:", move, e);
-                // If we fail to apply the move, our tempGame state is desynced.
-                // We cannot continue analysis reliably.
-                // We should stop here.
-                console.warn("Aborting Game Review due to state desync.");
-                worker.terminate();
-                resolve(report);
-                return;
-            }
-            
-            // Queue analysis for the position BEFORE the move was made
-            // Wait this is async.
-            worker.postMessage({ type: 'ANALYZE_MOVE', fen: fen, move: move.lan }); 
-            // ANALYZE_MOVE in our worker calculates score for specific move? 
-            // Our worker supports `ANALYZE` (best move) and `ANALYZE_MOVE` (specific?)
-            // Actually checking worker code:
-            // if (type === 'ANALYZE_MOVE') { cmd: position fen ... moves ...; go depth 10 }
-            // This returns info for THAT move.
-            // But we also need the BEST move to compare.
-            
-            // To do this properly requires 2 searches per move or MultiPV.
-            // For this quick demo, let's just run 'ANALYZE' on the position before the move
-            // and see if the 'bestmove' matches the played move.
-            
-            // Queue analysis
-            // Use lower depth (10) for faster game review
-            worker.postMessage({ type: 'ANALYZE', fen: fen, depth: 10 });
+            state = 'WAITING_BEFORE';
+            worker.postMessage({ 
+                type: 'ANALYZE', 
+                fen: tempGame.fen(), 
+                depth: 10 
+            });
         };
 
         worker.onmessage = (e) => {
             if (e.data.type === 'ANALYSIS_RESULT') {
-                 // Ignore intermediate updates (which don't have bestMove)
-                 if (!e.data.bestMove) return;
+                 if (!e.data.bestMove && e.data.depth < 10) return; 
 
-                 // We got FINAL analysis for the position
-                 const { bestMove, eval: score } = e.data;
-                 const playedMove = history[moveIndex]; 
-                 
-                 const playedMoveUci = playedMove.from + playedMove.to + (playedMove.promotion || '');
-                 
-                 // Compare
-                 let classification = 'good';
-                 let acc = 80;
-                 
-                 // Normalize bestMove (trim just in case)
-                 const bestMoveClean = bestMove.trim();
-                 
-                 if (bestMoveClean.includes(playedMoveUci)) {
-                     classification = 'best';
-                     acc = 100;
-                 } else {
-                     // Since we don't have the eval diff (we didn't analyze the move played, only the position),
-                     // we have to guess based on... nothing?
-                     // Ideally we would look at the score.
+                 if (state === 'WAITING_BEFORE') {
+                     currentBeforeEval = e.data.eval;
+                     currentBestMove = e.data.bestMove;
                      
-                     // Heuristic improvements for "Diamond" feel:
-                     // 1. If we are completely winning (Mate or huge advantage), any move that doesn't lose it is Good/Excellent.
-                     // 2. We can't know blunders without checking the PLAYED move's eval.
+                     // Now apply the move and get eval after
+                     const move = history[moveIndex];
+                     try {
+                         const moveObj = {
+                             from: move.from,
+                             to: move.to,
+                             promotion: move.promotion || 'q'
+                         };
+                         tempGame.move(moveObj);
+                     } catch (err) {
+                         console.error("Review Error:", err);
+                         worker.terminate();
+                         resolve(report);
+                         return;
+                     }
                      
-                     // For this version, let's just be harsh:
-                     // If it's not the best move, it's an "inaccuracy" (Accuracy 50%).
-                     // This explains the "100%" bug (we were default falling through with empty data).
-                     acc = 50; 
-                     classification = 'inaccuracy';
-                 }
-                 
-                 // Update Stats
-                 if (playedMove.color === playerColor) {
-                    report.moveStats[classification]++;
-                    cumulativeAccuracy += acc;
-                    countedMoves++;
-                 }
+                     state = 'WAITING_AFTER';
+                     worker.postMessage({ 
+                         type: 'ANALYZE', 
+                         fen: tempGame.fen(), 
+                         depth: 10 
+                     });
+                 } else if (state === 'WAITING_AFTER') {
+                     const currentAfterEval = e.data.eval;
+                     const playedMove = history[moveIndex];
+                     const playedMoveUci = playedMove.from + playedMove.to + (playedMove.promotion || '');
+                     
+                     const isBest = currentBestMove === playedMoveUci;
+                     
+                     // Calculate CP loss
+                     // If white moved, loss = before - after
+                     // If black moved, loss = after - before (worker returns normalized score w.r.t current turn)
+                     // Actually worker.js normalizeScore returns: currentActiveColor === 'w' ? score : -score;
+                     // So result.eval is always relative to White.
+                     
+                     const diff = playedMove.color === 'w' 
+                        ? (currentBeforeEval - currentAfterEval) 
+                        : (currentAfterEval - currentBeforeEval);
+                     
+                     const classification = classifyMove(diff, isBest, currentBeforeEval);
+                     const acc = calculateAccuracy(Math.max(0, diff));
 
-                 report.moves.push({
-                     move: playedMove.san,
-                     classification,
-                     score: score
-                 });
-                 
-                 moveIndex++;
-                 processNextMove();
+                     if (playedMove.color === playerColor) {
+                        if (report.moveStats[classification] !== undefined) {
+                            report.moveStats[classification]++;
+                        }
+                        cumulativeAccuracy += acc;
+                        countedMoves++;
+                     }
+
+                     report.moves.push({
+                         move: playedMove.san,
+                         from: playedMove.from,
+                         to: playedMove.to,
+                         classification,
+                         score: currentAfterEval,
+                         acc
+                     });
+                     
+                     moveIndex++;
+                     processNextMove();
+                 }
             }
         };
 
