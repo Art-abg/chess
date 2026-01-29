@@ -84,6 +84,16 @@ const PlayPage = () => {
     return analysisCache[viewIndex] || null;
   }, [viewIndex, lastMoveAnalysis, analysisCache]);
 
+  const evaluationMarkers = useMemo(() => {
+    const markers = {};
+    const indexToShow = viewIndex === -1 ? history.length - 1 : viewIndex;
+    if (indexToShow >= 0 && analysisCache[indexToShow] && history[indexToShow]) {
+      const move = history[indexToShow];
+      markers[move.to] = { type: analysisCache[indexToShow].classificationClass };
+    }
+    return markers;
+  }, [viewIndex, history, analysisCache]);
+
   useEffect(() => {
     if (game.turn() === 'b' && !game.isGameOver()) {
       makeAiMove();
@@ -181,7 +191,7 @@ const PlayPage = () => {
           disabled={game.turn() === 'b' || isAiThinking || game.isGameOver() || viewIndex !== -1}
           lastMove={displayLastMove}
           hint={hint}
-          analysisCache={analysisCache}
+          evaluationMarkers={evaluationMarkers}
         />
         
         {/* Player Info */}

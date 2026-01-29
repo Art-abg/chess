@@ -5,7 +5,7 @@ const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
 export default function ChessBoard(props) {
-  const { game, onMove, disabled, lastMove, hint, analysisCache } = props;
+  const { game, onMove, disabled, lastMove, hint, evaluationMarkers } = props;
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
 
@@ -100,10 +100,13 @@ export default function ChessBoard(props) {
                 {isPossibleMove && !isCapture && <div className="hint-dot" />}
                 {isCapture && <div className="hint-capture" />}
 
-                {/* Analysis Icon Overlay */}
-                {analysisIcon && (
-                    <div className="analysis-icon-overlay" style={{ backgroundColor: analysisIcon.color }}>
-                        {analysisIcon.icon}
+                {/* Evaluation Marker (from Game Review) */}
+                {evaluationMarkers && evaluationMarkers[square] && (
+                    <div 
+                        className={`evaluation-marker ${evaluationMarkers[square].type}`}
+                        title={evaluationMarkers[square].type}
+                    >
+                        {getScoreIcon(evaluationMarkers[square].type)}
                     </div>
                 )}
 
@@ -116,6 +119,20 @@ export default function ChessBoard(props) {
           })}
         </div>
       ))}
+
     </div>
   );
+}
+
+function getScoreIcon(type) {
+    switch (type) {
+        case 'brilliant': return '!!';
+        case 'best': return '★';
+        case 'excellent': return '✓';
+        case 'good': return '✓';
+        case 'inaccuracy': return '?!';
+        case 'mistake': return '?';
+        case 'blunder': return '??';
+        default: return '';
+    }
 }
