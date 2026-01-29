@@ -71,6 +71,7 @@ export default function useChessGame() {
       black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, book: 0, inaccuracy: 0, mistake: 0, blunder: 0, forced: 0 }
   });
   const [currentOpening, setCurrentOpening] = useState(null);
+  const [botChat, setBotChat] = useState('');
   
   // Sounds
   const { playMove, playCapture, playCheck, playGameEnd } = useSound();
@@ -147,10 +148,30 @@ export default function useChessGame() {
     analysisCacheRef.current[moveIndex] = newAnalysis;
     setAnalysisCache({ ...analysisCacheRef.current });
     
-    if (moveIndex === movesHistory.length - 1) {
+        if (moveIndex === movesHistory.length - 1) {
         setLastMoveAnalysis(newAnalysis);
+        
+        // Trigger Bot Chatter
+        const bot = getBotById(currentBotId);
+        if (bot && bot.personality) {
+            const isBotMove = lastMove.color === (gameRef.current.turn() === 'w' ? 'b' : 'w'); // Simplification: turn already swapped?
+            // Actually, gameRef.current is the state *after* the move.
+            // If it's White's turn now, Black just moved.
+            
+            const justMovedColor = lastMove.color;
+            const isBotTurn = (justMovedColor === 'b'); 
+
+            if (classification === Classification.BLUNDER || classification === Classification.MISTAKE) {
+                const templates = isBotTurn ? bot.personality.onBotBlunder : bot.personality.onPlayerBlunder;
+                if (templates) setBotChat(templates[Math.floor(Math.random() * templates.length)]);
+            } else if (lastMove.captured) {
+                if (isBotTurn && bot.personality.onCapture) {
+                    setBotChat(bot.personality.onCapture[Math.floor(Math.random() * bot.personality.onCapture.length)]);
+                }
+            }
+        }
     }
-  }, []);
+  }, [currentBotId]);
 
   useEffect(() => {
     showAnalysisRef.current = showAnalysis;
@@ -184,7 +205,17 @@ export default function useChessGame() {
     // Opening Detection
     const opening = detectOpening(newHistory);
     if (opening) setCurrentOpening(opening);
-  }, [playMove, playCapture, playCheck, playGameEnd]);
+
+    // Game End Chatter
+    if (currentGame.isGameOver()) {
+        const bot = getBotById(currentBotId);
+        if (bot && bot.personality) {
+            const isWin = (currentGame.isCheckmate() && currentGame.turn() === 'w'); // Black (Bot) wins if it's White's turn and checkmate
+            const templates = isWin ? bot.personality.onWin : bot.personality.onLoss;
+            if (templates) setBotChat(templates[Math.floor(Math.random() * templates.length)]);
+        }
+    }
+  }, [currentBotId]);
 
   // Initialize Workers
   useEffect(() => {
@@ -262,6 +293,12 @@ export default function useChessGame() {
     };
 
     analysisWorker.current.postMessage({ type: 'ANALYZE', fen: gameRef.current.fen() });
+
+    // Initial Greeting
+    const bot = getBotById(currentBotId);
+    if (bot && bot.personality && bot.personality.greetings) {
+        setBotChat(bot.personality.greetings[Math.floor(Math.random() * bot.personality.greetings.length)]);
+    }
 
     return () => {
         if (botWorker.current) botWorker.current.terminate();
@@ -566,6 +603,7 @@ export default function useChessGame() {
     moveStats,
     startFullGameReview,
     calculateFinalAccuracy,
-    currentOpening
+    currentOpening,
+    botChat
   };
 }

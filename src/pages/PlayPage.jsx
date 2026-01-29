@@ -45,7 +45,8 @@ const PlayPage = () => {
     accuracy,
     moveStats,
     startFullGameReview,
-    currentOpening
+    currentOpening,
+    botChat
   } = useGame();
 
   const currentBot = getBotById(currentBotId);
@@ -181,7 +182,15 @@ const PlayPage = () => {
           </div>
           
           <div className="bot-message">
-             {isAiThinking ? "Thinking..." : currentBot.description}
+             {isAiThinking ? (
+                <div className="thinking-dots">
+                  <span>.</span><span>.</span><span>.</span>
+                </div>
+             ) : (
+                <div className="bot-chat-bubble">
+                   {botChat || currentBot.description}
+                </div>
+             )}
           </div>
         </div>
 
