@@ -5,7 +5,7 @@ const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
 export default function ChessBoard(props) {
-  const { game, onMove, disabled, lastMove, hint, evaluationMarkers } = props;
+  const { game, onMove, disabled, lastMove, hint, evaluationMarkers, analysisCache } = props;
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
 
@@ -100,15 +100,15 @@ export default function ChessBoard(props) {
                 {isPossibleMove && !isCapture && <div className="hint-dot" />}
                 {isCapture && <div className="hint-capture" />}
 
-                {/* Evaluation Marker (from Game Review) */}
-                {evaluationMarkers && evaluationMarkers[square] && (
+                {/* Evaluation Marker (from Real-time Analysis or Game Review) */}
+                {(evaluationMarkers && evaluationMarkers[square]) || analysisIcon ? (
                     <div 
-                        className={`evaluation-marker ${evaluationMarkers[square].type}`}
-                        title={evaluationMarkers[square].type}
+                        className={`evaluation-marker ${(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon)}`}
+                        title={(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon)}
                     >
-                        {getScoreIcon(evaluationMarkers[square].type)}
+                        {getScoreIcon((evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon))}
                     </div>
-                )}
+                ) : null}
 
                 {/* Piece */}
                 <div className="piece-container">

@@ -201,6 +201,7 @@ const PlayPage = () => {
           lastMove={displayLastMove}
           hint={hint}
           evaluationMarkers={evaluationMarkers}
+          analysisCache={analysisCache}
         />
         
         {/* Player Info */}
