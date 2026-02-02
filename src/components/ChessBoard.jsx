@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Piece from './Piece';
+import PromotionModal from './PromotionModal';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
@@ -8,6 +9,7 @@ export default function ChessBoard(props) {
   const { game, onMove, disabled, lastMove, hint, evaluationMarkers, analysisCache } = props;
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
+  const [pendingPromotion, setPendingPromotion] = useState(null);
 
   // Helper to get square color
   const isDark = (fileIndex, rankIndex) => (fileIndex + rankIndex) % 2 !== 0;
@@ -25,9 +27,16 @@ export default function ChessBoard(props) {
       }
 
       // Check if clicked square is a valid move
-      const move = possibleMoves.find(m => m.to === square);
-      if (move) {
-        onMove(move);
+      const moves = possibleMoves.filter(m => m.to === square);
+      if (moves.length > 0) {
+        // Promotion detection
+        const isPromotion = moves.some(m => m.promotion);
+        if (isPromotion) {
+          setPendingPromotion({ from: selectedSquare, to: square, color: game.turn() });
+          return;
+        }
+
+        onMove(moves[0]);
         setSelectedSquare(null);
         setPossibleMoves([]);
         return;
@@ -120,9 +129,25 @@ export default function ChessBoard(props) {
         </div>
       ))}
 
+      {pendingPromotion && (
+        <PromotionModal 
+          color={pendingPromotion.color} 
+          onSelect={(piece) => {
+            onMove({ 
+              from: pendingPromotion.from, 
+              to: pendingPromotion.to, 
+              promotion: piece 
+            });
+            setPendingPromotion(null);
+            setSelectedSquare(null);
+            setPossibleMoves([]);
+          }} 
+        />
+      )}
     </div>
   );
 }
+
 
 function getScoreIcon(type) {
     switch (type) {
