@@ -92,6 +92,19 @@ export default function useChessGame() {
     gameRef.current = game;
   }, [game]);
 
+  // Diamond Fix: Trigger continuous analysis whenever the FEN changes
+  // This handles moves, undos, and game resets automatically.
+  useEffect(() => {
+    if (analysisWorker.current && showAnalysis) {
+        const moves = game.history({ verbose: true });
+        analysisWorker.current.postMessage({ 
+            type: 'ANALYZE', 
+            fen: fen,
+            moveIndex: moves.length - 1 
+        });
+    }
+  }, [fen, showAnalysis]);
+
   const processAnalysisUpdate = useCallback((score, depth, moveIndex, bestMove) => {
     if (!showAnalysisRef.current) return;
     
@@ -448,31 +461,15 @@ export default function useChessGame() {
     setViewIndex(-1);
     
     // Restart Analysis for the restored position
-    // We need to wait for state update or just use the new fen logic?
-    // Since setFend is async, we can't trust `game` immediately here if we used functional update.
-    // But we can trigger analysis in useEffect when `fen` changes? 
-    // Existing useEffect only sets up workers.
-    // Let's manually trigger analysis after a short delay or rely on the game state ref if we had one.
-    // Better: Helper function for analysis trigger.
-    
-    setTimeout(() => {
-        // Safe bet to re-trigger analysis on current fen state accessible then
-        // But `game` in closure is stale. 
-        // We really should use `useEffect` to trigger analysis on `fen` change, but `makeMove` triggers it manually.
-        // Let's just fire it with the logic we know:
-        // We can't know the exact FEN here easily without race conditions in this architecture.
-        // But `setFen` will trigger a re-render.
-        // Let's add a useEffect for `fen` changes to trigger analysis?
-        // CURRENT IMPLEMENTATION: `makeMove` triggers `ANALYZE`. `botWorker` triggers `ANALYZE`.
-        // So `undo` needs to trigger `ANALYZE`.
+    if (analysisWorker.current) {
+        analysisWorker.current.postMessage({ type: 'STOP' });
         
-        // Hack: read the DOM or just send a "STOP" to analysis worker first.
-         if (analysisWorker.current) {
-            analysisWorker.current.postMessage({ type: 'STOP' });
-            // We'll let the user make a move to restart analysis or ...
-            // Ideally we want to see the eval of the position we went back to.
-         }
-    }, 10);
+        // Wait for next tick to ensure state is flushed before re-analyzing
+        // We can't use the current 'game' because it hasn't updated in the closure yet,
+        // but we can compute the position here or trigger it from the FEN update.
+        // For simplicity and to avoid race conditions with multiple undos, 
+        // we'll rely on the fact that undo sets the FEN.
+    }
   };
 
   const requestHint = () => {

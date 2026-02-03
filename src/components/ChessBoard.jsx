@@ -112,10 +112,10 @@ export default function ChessBoard(props) {
                 {/* Evaluation Marker (from Real-time Analysis or Game Review) */}
                 {(evaluationMarkers && evaluationMarkers[square]) || analysisIcon ? (
                     <div 
-                        className={`evaluation-marker ${(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon)}`}
-                        title={(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon)}
+                        className={`evaluation-marker ${(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.classificationClass || analysisIcon)}`}
+                        title={(evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.classificationClass || analysisIcon)}
                     >
-                        {getScoreIcon((evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.icon || analysisIcon))}
+                        {getScoreIcon((evaluationMarkers && evaluationMarkers[square]) ? evaluationMarkers[square].type : (analysisIcon.classificationClass || analysisIcon))}
                     </div>
                 ) : null}
 
