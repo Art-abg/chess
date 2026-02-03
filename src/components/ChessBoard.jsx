@@ -74,12 +74,14 @@ export default function ChessBoard(props) {
             let analysisIcon = null;
             if (analysisCache) {
                 const history = game.history({ verbose: true });
-                const startIdx = Math.max(0, history.length - 2);
-                for (let i = history.length - 1; i >= startIdx; i--) {
-                    const m = history[i];
-                    if (m.to === square && analysisCache[i]) {
-                        analysisIcon = analysisCache[i].style;
-                        break; 
+                if (history.length > 0) {
+                    const startIdx = Math.max(0, history.length - 2);
+                    for (let i = history.length - 1; i >= startIdx; i--) {
+                        const m = history[i];
+                        if (m.to === square && analysisCache[i]) {
+                            analysisIcon = analysisCache[i];
+                            break; 
+                        }
                     }
                 }
             }

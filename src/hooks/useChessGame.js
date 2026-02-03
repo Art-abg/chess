@@ -198,7 +198,13 @@ export default function useChessGame() {
       status = `Checkmate! ${currentGame.turn() === 'w' ? 'Black' : 'White'} wins!`;
       playGameEnd();
     } else if (currentGame.isDraw()) {
-      status = 'Draw!';
+      let reason = 'Draw';
+      if (currentGame.isStalemate()) reason = 'Stalemate';
+      else if (currentGame.isThreefoldRepetition()) reason = 'Threefold Repetition';
+      else if (currentGame.isInsufficientMaterial()) reason = 'Insufficient Material';
+      else if (currentGame.isDrawByFiftyMoves()) reason = '50-move Rule';
+      
+      status = `Draw! (${reason})`;
       playGameEnd();
     } else {
       status = `Turn: ${currentGame.turn() === 'w' ? 'White' : 'Black'}`;
@@ -230,8 +236,12 @@ export default function useChessGame() {
     }
   }, [currentBotId]);
 
-  // Initialize Workers
+  // Initialize Workers once
   useEffect(() => {
+    if (botWorker.current || analysisWorker.current) return;
+
+    console.log('useChessGame: Initializing Workers');
+    
     // Worker 1: Bot Opponent
     botWorker.current = new Worker('/engine/worker.js', { type: 'classic' });
     
@@ -239,11 +249,9 @@ export default function useChessGame() {
       const { type, move, eval: botEval } = e.data;
       
       if (type === 'MOVE_RESULT') {
-        // Diamond Fix: Use the bot's own internal search eval to immediately classify the player's move
         if (botEval !== undefined) {
             const moves = gameRef.current.history({ verbose: true });
             if (moves.length > 0) {
-                // Classify the move that led to the bot searching (the player's move)
                 processAnalysisUpdate(botEval, 10, moves.length - 1, move);
             }
         }
@@ -257,24 +265,13 @@ export default function useChessGame() {
                 newGame.load(g.fen()); 
             }
             
-            // Snapshot state before AI move
             prevGameState.current = { eval: currentEval, bestMove: currentBestMove };
 
             try { 
               const moveResult = newGame.move(move);
               if (moveResult) {
                 setFen(newGame.fen());
-                updateStatus(newGame, moveResult); // Pass move result for sound
-                
-                // Trigger Analysis for the new position (on the separate worker)
-                if (analysisWorker.current) {
-                    const moves = newGame.history({ verbose: true });
-                    analysisWorker.current.postMessage({ 
-                        type: 'ANALYZE', 
-                        fen: newGame.fen(),
-                        moveIndex: moves.length - 1 // Analyze the move that was JUST played
-                    });
-                }
+                updateStatus(newGame, moveResult);
               }
             } catch { console.error('Invalid AI move', move); }
             return newGame;
@@ -284,7 +281,7 @@ export default function useChessGame() {
       }
     };
 
-    // Worker 2: Analysis Engine (Diamond Feature: Continuous Analysis)
+    // Worker 2: Analysis Engine
     analysisWorker.current = new Worker('/engine/worker.js', { type: 'classic' });
     
     analysisWorker.current.onmessage = (e) => {
@@ -292,19 +289,18 @@ export default function useChessGame() {
 
         if (type === 'ANALYSIS_RESULT') {
             const depth = e.data.depth;
-            const moveIndex = e.data.moveIndex; // New: Get move index from worker
+            const moveIndex = e.data.moveIndex;
             
             setCurrentEval(score);
             if (bestMove) {
                 setCurrentBestMove(bestMove);
                 setIsAnalyzingHint(false);
             }
-    
-            // Use general analysis worker results (Diamond Sync)
             processAnalysisUpdate(score, depth, moveIndex, bestMove);
         }
     };
 
+    // Trigger initial analysis
     analysisWorker.current.postMessage({ type: 'ANALYZE', fen: gameRef.current.fen() });
 
     // Initial Greeting
